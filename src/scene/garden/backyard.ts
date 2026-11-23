@@ -8,10 +8,10 @@ export interface BackyardRefs {
   lantern: THREE.Mesh;
 }
 
-export function buildBackyard(ctx: BuildCtx): BackyardRefs {
+/** Coconut palm and banana plant builders (shared by the garden and the logo). */
+export function createPlants(ctx: BuildCtx) {
   const { b, M, T, rnd, color } = ctx;
   const std = (o: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial(o);
-
   const frondGeo = (() => {
     const g = new THREE.PlaneGeometry(3.4, 0.85, 12, 1);
     g.translate(1.7, 0, 0);
@@ -63,20 +63,6 @@ export function buildBackyard(ctx: BuildCtx): BackyardRefs {
       n.position.set(Math.cos(i * 1.6) * 0.18, -0.2, Math.sin(i * 1.6) * 0.18);
     }
   }
-  (
-    [
-      [-11, -14, 7.5, 1.2, 0.3],
-      [5.8, -15.4, 8.2, 0.9, 2.2],
-      [11.2, -9, 7.2, 1.4, 0.1],
-      [-11.6, -3, 8, 1.0, 3.3],
-      [11.5, 3.5, 7.6, 1.2, -0.4],
-      [-11.2, 8.5, 7.2, 1.5, 2.6],
-      [9.2, 9.6, 6.8, 1.1, -0.9],
-      [-4.8, -16, 7.8, 0.8, 1.2],
-      [12.3, -15.2, 6.5, 1.3, 0.6],
-      [-12.5, -12, 6.2, 0.9, -1],
-    ] as const
-  ).forEach(([x, z, h, lean, dir]) => palm(x, z, h, lean, dir));
 
   const bananaMat = std({ map: T.banana, alphaTest: 0.4, side: THREE.DoubleSide, roughness: 0.8 });
   const bananaStem = color({ color: 0x7d8f45, roughness: 0.9 });
@@ -95,6 +81,35 @@ export function buildBackyard(ctx: BuildCtx): BackyardRefs {
       g.add(l);
     }
   }
+
+  const bushMat = color({ color: 0x163a0c, roughness: 0.9, flatShading: true }).m;
+  function bush(x: number, z: number, r: number) {
+    const h = b.mesh(new THREE.IcosahedronGeometry(r, 1), bushMat);
+    h.position.set(x, r * 0.75, z);
+    h.scale.y = 0.75;
+  }
+
+  return { palm, banana, bush };
+}
+
+export function buildBackyard(ctx: BuildCtx): BackyardRefs {
+  const { b, M, T, rnd, color } = ctx;
+  const std = (o: THREE.MeshStandardMaterialParameters) => new THREE.MeshStandardMaterial(o);
+  const { palm, banana } = createPlants(ctx);
+  (
+    [
+      [-11, -14, 7.5, 1.2, 0.3],
+      [5.8, -15.4, 8.2, 0.9, 2.2],
+      [11.2, -9, 7.2, 1.4, 0.1],
+      [-11.6, -3, 8, 1.0, 3.3],
+      [11.5, 3.5, 7.6, 1.2, -0.4],
+      [-11.2, 8.5, 7.2, 1.5, 2.6],
+      [9.2, 9.6, 6.8, 1.1, -0.9],
+      [-4.8, -16, 7.8, 0.8, 1.2],
+      [12.3, -15.2, 6.5, 1.3, 0.6],
+      [-12.5, -12, 6.2, 0.9, -1],
+    ] as const
+  ).forEach(([x, z, h, lean, dir]) => palm(x, z, h, lean, dir));
   (
     [
       [-9, -10],
