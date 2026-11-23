@@ -81,17 +81,33 @@ export async function importPhoto(householdId: string, imageUrl: string): Promis
   }
 }
 
-/** A short-lived signed link to a private photo. */
-export function usePhotoUrl(path: string | null | undefined) {
+/** A short-lived signed link to a private file. */
+export function useSignedUrl(bucket: string, path: string | null | undefined) {
   return useQuery({
-    queryKey: ["photo", path],
+    queryKey: ["signed", bucket, path],
     enabled: !!path,
     staleTime: 50 * 60_000,
     queryFn: async () => {
-      const { data } = (await supabaseBrowser()?.storage.from(PHOTO_BUCKET).createSignedUrl(path!, 3600)) ?? { data: null };
+      const { data } = (await supabaseBrowser()?.storage.from(bucket).createSignedUrl(path!, 3600)) ?? { data: null };
       return data?.signedUrl ?? null;
     },
   });
+}
+export const usePhotoUrl = (path: string | null | undefined) => useSignedUrl(PHOTO_BUCKET, path);
+
+export const FILES_BUCKET = "household-files";
+
+/** Upload a file to the household's private folder. Images are shrunk first; PDFs up to 5 MB go as they are. */
+export async function uploadHouseholdFile(householdId: string, kind: "memories" | "trips" | "bookings" | "vault", file: Blob): Promise<string> {
+  const isImage = file.type.startsWith("image/");
+  if (!isImage && file.type !== "application/pdf") throw new Error("Only photos and PDFs can be attached");
+  if (!isImage && file.size > 5 * 1024 * 1024) throw new Error("PDFs can be up to 5 MB");
+  const body = isImage ? await compressToWebp(file) : file;
+  const ext = body.type === "image/webp" ? "webp" : body.type === "image/jpeg" ? "jpg" : body.type === "image/png" ? "png" : "pdf";
+  const path = `${householdId}/${kind}/${crypto.randomUUID()}.${ext}`;
+  const { error } = (await supabaseBrowser()?.storage.from(FILES_BUCKET).upload(path, body, { contentType: body.type, upsert: false })) ?? {};
+  if (error) throw new Error(error.message);
+  return path;
 }
 
 export interface RecipeInput {

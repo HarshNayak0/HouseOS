@@ -24,6 +24,15 @@ const TABLES = [
   "recipe_ingredients",
   "recipe_steps",
   "recipe_ratings",
+  "date_ideas",
+  "date_memories",
+  "date_ratings",
+  "trips",
+  "trip_days",
+  "trip_bookings",
+  "trip_expenses",
+  "packing_items",
+  "packing_templates",
 ] as const;
 
 /** Downloads everything the signed-in person can see (RLS applies) as one JSON file. */

@@ -39,7 +39,7 @@ export function CalendarView() {
     const m = new Map<string, CalItem[]>();
     for (const i of items) {
       // multi-day all-day events appear on each day they cover
-      const last = i.allDay && i.kind === "event" ? addDays(torontoDayKey(new Date(i.end.getTime() - 1)), 0) : i.day;
+      const last = i.allDay && (i.kind === "event" || i.kind === "trip") ? addDays(torontoDayKey(new Date(i.end.getTime() - 1)), 0) : i.day;
       for (let d = i.day, n = 0; d <= last && n < 60; d = addDays(d, 1), n++) m.set(d, [...(m.get(d) ?? []), i]);
     }
     return m;

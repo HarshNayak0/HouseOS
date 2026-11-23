@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 6 (recipe box) built. Next: phase 7, bedroom, backyard and closet.
+**Status:** phase 7a (bedroom dates and backyard trips) built. Next: phase 7b, the coat closet vault.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -170,6 +170,24 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
 - **Photos** are compressed in the browser to WebP (at most 1600 px, about 200 KB) and stored in the private `recipe-photos` bucket, one folder per household. Imported photos are copied in, never linked from the original site.
 - **Sharing on Android:** Share → Veedu opens the importer (PWA share target). On iPhone, use the importer's **Paste** button.
 - Parsing lives in `supabase/functions/_shared/recipe.ts` and is unit-tested in `tests/unit/recipe-parse.test.ts`.
+
+## Dates and trips
+
+- **Bedroom: date ideas.**
+  - Ideas move from wishlist to planned to done. Filter by budget (Free to $$$$) and time needed.
+  - **Surprise me** draws one from the uruli.
+  - **Schedule** adds the date to the Us calendar, or to your own if Us isn't set up. The event is removed if you unplan it. Dates not on Google still show in the app calendar.
+  - **We did it** saves a memory with a photo and a note. Each of you rates it 1–5, and only you can change your own rating.
+  - The petti lamp glows when a date is planned this week (Mon–Sun, Toronto time).
+- **Backyard: trips.** Each trip has its own page:
+  - a cover photo
+  - a day-by-day plan
+  - bookings with confirmation numbers (tap to copy), cost and an attached ticket (PDF up to 5 MB, or a photo)
+  - a packing list, shared and per person, with a % packed, reusable templates and a starter list
+  - a budget: planned against bookings plus money spent there, and who paid
+- **Trips elsewhere in the app:** they appear on the calendar as all-day spans and in the living-room strip when 30 days away or less. The boat lantern lights up from 30 days before a trip until it ends.
+- **Files:** photos and attachments live in the private `household-files` bucket, one folder per household. Links are signed and expire after an hour.
+- **Tests:** the pure helpers are in `src/lib/trips.ts` (unit-tested). Access rules are checked in `tests/db/dates_trips.test.sql`.
 
 ## Reminders (push)
 

@@ -4,6 +4,13 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Phase 7 split: 7a bedroom + backyard, 7b closet vault | The vault needs its own key setup and careful testing; keeping it separate keeps each test pass small |
+| 2026-11-24 | Date ratings: one row per person, insert-then-update, editable only by its owner (RLS on `member_id`) | Same pattern as recipe ratings; each of you keeps your own score |
+| 2026-11-24 | Scheduled dates go to the Us calendar (else your primary); the app stores the event id and deletes it when unplanned | One source of truth on Google; no duplicate in the app calendar |
+| 2026-11-24 | Trip files in one private `household-files` bucket (5 MB; WebP/JPEG/PNG/PDF), per-household folders, 1-hour signed links | Free-tier storage; the bucket is shared with the vault in 7b |
+| 2026-11-24 | Itinerary items are rows dated within the trip, not a JSON blob per day | Both of you can edit at once with realtime and soft delete |
+| 2026-11-24 | Budget total = booking costs + expenses; one currency per trip (CAD default) | No currency conversion API (cost rule) |
+| 2026-11-24 | Boat lantern lights from 30 days before a trip until it ends; petti lamp for a date planned this Mon–Sun week | SPEC §3.3 indicators, Toronto weeks |
 | 2026-11-24 | Image shrinker checks the encoded type and falls back to JPEG, then downsizes until it fits | iPhone Safari can't encode WebP and silently returned full-size PNGs, so screenshots were rejected as "too large" |
 | 2026-11-24 | Screenshot import (≤4 images, compressed on the phone, read by Gemini, not stored) | Harsh can't copy captions in the Instagram app; screenshots also catch on-screen ingredient lists. Same free key, still no downloading from Instagram |
 | 2026-11-24 | Recipe imports: no video upload, no Groq; Gemini (free tier) for pasted captions and for websites without JSON-LD; JSON-LD first, no AI | Harsh's choice; fewest keys, still $0; no GitHub media worker needed |

@@ -12,6 +12,8 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { SUPABASE_URL } from "@/lib/supabase/config";
 import { torontoDayKey, torontoToUtc } from "@/lib/time";
 import type { Chore } from "@/panels/Chores";
+import type { DateIdea } from "@/panels/Dates";
+import type { Trip } from "@/panels/Trips";
 import type { Task } from "@/panels/Tasks";
 
 export interface CalendarAccount extends BaseRow {
@@ -100,7 +102,7 @@ export function milestoneLabel(kind: Milestone["kind"], years: number) {
   return kind === "birthday" ? `turning ${years}` : kind === "anniversary" ? `${ordinal(years)} anniversary` : `${years} years`;
 }
 
-export type ItemKind = "event" | "task" | "chore" | "milestone";
+export type ItemKind = "event" | "task" | "chore" | "milestone" | "trip" | "date";
 export interface CalItem {
   key: string;
   kind: ItemKind;
@@ -130,6 +132,8 @@ export function useCalendarItems() {
   const tasks = useRows<Task>("tasks");
   const chores = useRows<Chore>("chores");
   const milestones = useRows<Milestone>("milestones");
+  const trips = useRows<Trip>("trips");
+  const dates = useRows<DateIdea>("date_ideas");
 
   const visible = live(sources.data).filter((s) => s.visible);
   const srcById = new Map(visible.map((s) => [s.id, s]));
@@ -164,6 +168,20 @@ export function useCalendarItems() {
       const years = y - Number(m.base_date.slice(0, 4));
       items.push({ key: `m:${m.id}:${date}`, kind: "milestone", title: m.title, start, end: start, allDay: true, color: "#B8893B", who: m.person_id, day: date, sub: milestoneLabel(m.kind, years) });
     }
+  }
+  for (const t of live(trips.data)) {
+    const [y, mo, d] = t.starts_on.split("-").map(Number);
+    const [y2, mo2, d2] = t.ends_on.split("-").map(Number);
+    const start = torontoToUtc(y, mo, d, 0, 0);
+    // all-day spans end at the start of the day after the last day
+    const end = new Date(torontoToUtc(y2, mo2, d2, 12, 0).getTime() + 12 * 3_600_000);
+    items.push({ key: `trip:${t.id}`, kind: "trip", title: `🧳 ${t.title}`, start, end, allDay: true, color: colorOf(null), who: null, day: t.starts_on, sub: t.destination ?? "Trip" });
+  }
+  // planned dates already on Google Calendar show up as events; the rest show here
+  for (const d of live(dates.data)) {
+    if (d.status !== "planned" || !d.planned_for || d.calendar_event_id) continue;
+    const start = new Date(d.planned_for);
+    items.push({ key: `date:${d.id}`, kind: "date", title: `💛 ${d.title}`, start, end: start, allDay: false, color: colorOf(null), who: null, day: torontoDayKey(start), sub: "Date night" });
   }
   items.sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.getTime() - b.start.getTime());
   return { items, sources: live(sources.data), loading: events.isLoading || sources.isLoading };

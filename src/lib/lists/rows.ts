@@ -30,7 +30,16 @@ export type ListTable =
   | "recipes"
   | "recipe_ingredients"
   | "recipe_steps"
-  | "recipe_ratings";
+  | "recipe_ratings"
+  | "date_ideas"
+  | "date_memories"
+  | "date_ratings"
+  | "trips"
+  | "trip_days"
+  | "trip_bookings"
+  | "trip_expenses"
+  | "packing_items"
+  | "packing_templates";
 export const rowsKey = (t: ListTable) => ["rows", t] as const;
 
 export interface BaseRow {
@@ -53,6 +62,9 @@ const ORDER: Partial<Record<ListTable, { column: string; ascending: boolean; lim
   recipes: { column: "created_at", ascending: false },
   recipe_ingredients: { column: "position", ascending: true, limit: 5000 },
   recipe_steps: { column: "position", ascending: true, limit: 5000 },
+  date_memories: { column: "happened_on", ascending: false },
+  trips: { column: "starts_on", ascending: true },
+  trip_days: { column: "day_date", ascending: true },
 };
 
 /** Tables whose secret columns the app may not read. */
@@ -155,6 +167,15 @@ const LIVE_TABLES: ListTable[] = [
   "recipe_ingredients",
   "recipe_steps",
   "recipe_ratings",
+  "date_ideas",
+  "date_memories",
+  "date_ratings",
+  "trips",
+  "trip_days",
+  "trip_bookings",
+  "trip_expenses",
+  "packing_items",
+  "packing_templates",
 ];
 
 /**

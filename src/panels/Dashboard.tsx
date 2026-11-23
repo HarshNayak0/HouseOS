@@ -11,6 +11,8 @@ import { goToRoom } from "@/lib/nav";
 import { formatToronto, torontoDayKey } from "@/lib/time";
 import type { Chore } from "./Chores";
 import type { Task } from "./Tasks";
+import { daysBetween, packedPct } from "@/lib/trips";
+import type { PackingItem, Trip } from "./Trips";
 import { Sec, WhoChip, linkBtn, usePeople } from "./ui";
 
 const TONE: Record<UrgentTone, string> = {
@@ -35,6 +37,8 @@ export function Dashboard() {
   const { data: tasks } = useRows<Task>("tasks");
   const { data: chores } = useRows<Chore>("chores");
   const { data: milestones } = useRows<Milestone>("milestones");
+  const { data: trips } = useRows<Trip>("trips");
+  const { data: packing } = useRows<PackingItem>("packing_items");
   const { items } = useCalendarItems();
 
   const urgent = buildUrgent({
@@ -46,6 +50,9 @@ export function Dashboard() {
       const n = nextOccurrence(m.base_date, today);
       return { id: m.id, title: m.title, date: n.date, daysAway: n.daysAway, label: milestoneLabel(m.kind, n.years) };
     }),
+    trips: live(trips)
+      .filter((t) => t.ends_on >= today)
+      .map((t) => ({ id: t.id, title: t.title, starts_on: t.starts_on, daysAway: Math.max(0, daysBetween(today, t.starts_on)), packedPct: packedPct(packing ?? [], t.id) })),
     dayKey: (s) => torontoDayKey(s),
     label: (s, t) => dueLabel(s, t, now),
   });

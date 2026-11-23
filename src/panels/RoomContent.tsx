@@ -3,14 +3,16 @@
 import type { RoomId } from "@/scene/config";
 import { CalendarView } from "./Calendar";
 import { Chores } from "./Chores";
+import { DateIdeas } from "./Dates";
 import { ActivityFeed, Dashboard, TogetherCounter } from "./Dashboard";
 import { Milestones } from "./Milestones";
 import { NotesBoard } from "./Notes";
 import { RecipeBox } from "./Recipes";
 import { ShoppingList } from "./ShoppingList";
 import { Tasks } from "./Tasks";
+import { TripsRoom } from "./Trips";
 
-const REAL: RoomId[] = ["living", "kitchen", "office", "wash"];
+const REAL: RoomId[] = ["living", "kitchen", "office", "wash", "bedroom", "backyard"];
 export const hasRealContent = (room: RoomId) => REAL.includes(room);
 
 
@@ -34,6 +36,10 @@ export function RoomContent({ room }: { room: RoomId }) {
       );
     case "wash":
       return <Chores />;
+    case "bedroom":
+      return <DateIdeas />;
+    case "backyard":
+      return <TripsRoom />;
     case "living":
       return (
         <>
