@@ -226,7 +226,7 @@ function ItemRow({
             {item.qty ? <span className="text-ink-2"> · {item.qty}{item.unit ? ` ${item.unit}` : ""}</span> : null}
           </button>
         )}
-        {by && <span className="block text-[11px] text-ink-2 no-underline">got by {by.display_name}</span>}
+        {by && <span className="inline-block text-[11px] text-ink-2">got by {by.display_name}</span>}
         <PartnerHint id={item.id} />
       </div>
       <IconButton label={`Delete ${item.name}`} onClick={onDelete}>

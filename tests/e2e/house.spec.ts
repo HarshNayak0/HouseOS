@@ -86,3 +86,20 @@ test("camera animations can override the system reduce-motion setting", async ({
   await page.getByLabel(/Always fly the camera/).check();
   expect(await page.evaluate(() => localStorage.getItem("veedu.motion"))).toBe("always");
 });
+
+test("on phones the room panel can be expanded to full screen", async ({ page }, info) => {
+  test.skip(info.project.name !== "mobile-375", "phone-only behaviour");
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem("veedu.view", "2d");
+    } catch {}
+  });
+  await page.goto("/kitchen");
+  const panel = page.getByRole("complementary", { name: /Kitchen panel/ });
+  await expect(panel).toBeVisible();
+  const half = (await panel.boundingBox())!.height;
+  await page.getByRole("button", { name: "Expand the panel to full screen" }).click();
+  await expect.poll(async () => (await panel.boundingBox())!.height).toBeGreaterThan(half * 1.4);
+  await page.getByRole("button", { name: "Make the panel smaller" }).click();
+  await expect.poll(async () => Math.round((await panel.boundingBox())!.height)).toBeLessThan(half + 5);
+});
