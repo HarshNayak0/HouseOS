@@ -167,6 +167,6 @@ describe("screenshot checks", () => {
     expect(validateScreenshots([img, img, img, img, img])).toBe("Up to 4 screenshots at a time");
     expect(validateScreenshots([{ mime: "application/pdf", data: "AAAA" }])).toBe("Screenshots must be images");
     expect(validateScreenshots([{ mime: "image/png", data: "not base64!" }])).toBe("Bad screenshot data");
-    expect(validateScreenshots([{ mime: "image/png", data: "A".repeat(2_100_000) }])).toBe("A screenshot is too large");
+    expect(validateScreenshots([{ mime: "image/png", data: "A".repeat(2_100_000) }])).toMatch(/too large/);
   });
 });

@@ -344,7 +344,7 @@ export function validateScreenshots(raw: unknown): InlineImage[] | string {
     const { mime, data } = x as Record<string, unknown>;
     if (typeof mime !== "string" || !IMAGE_MIMES.includes(mime)) return "Screenshots must be images";
     if (typeof data !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return "Bad screenshot data";
-    if ((data.length * 3) / 4 > 1_500_000) return "A screenshot is too large";
+    if ((data.length * 3) / 4 > 1_500_000) return "A screenshot is too large (over 1.5 MB after shrinking). Try cropping it.";
     out.push({ mime, data });
   }
   return out;

@@ -64,7 +64,7 @@ export async function callRecipes<T>(path: "import" | "image", body: Record<stri
 /** Compress and upload a photo into the household's private folder. Returns its storage path. */
 export async function uploadRecipePhoto(householdId: string, file: Blob): Promise<string> {
   const webp = await compressToWebp(file);
-  const ext = webp.type === "image/webp" ? "webp" : "jpg";
+  const ext = webp.type === "image/webp" ? "webp" : webp.type === "image/png" ? "png" : "jpg";
   const path = `${householdId}/${crypto.randomUUID()}.${ext}`;
   const { error } = (await supabaseBrowser()?.storage.from(PHOTO_BUCKET).upload(path, webp, { contentType: webp.type, upsert: false })) ?? {};
   if (error) throw new Error(error.message);
