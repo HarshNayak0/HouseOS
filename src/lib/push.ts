@@ -51,18 +51,26 @@ export async function enablePush(householdId: string, memberId: string): Promise
   const parsed = pushSubscriptionSchema.parse(sub.toJSON());
   const sb = supabaseBrowser();
   if (!sb) return "not-configured";
-  const { error } = await sb.from("push_subscriptions").upsert(
-    {
-      household_id: householdId,
-      member_id: memberId,
-      endpoint: parsed.endpoint,
-      p256dh: parsed.keys.p256dh,
-      auth: parsed.keys.auth,
-      user_agent: navigator.userAgent.slice(0, 200),
-    },
-    { onConflict: "endpoint" },
-  );
-  if (error) throw error;
+  const row = {
+    household_id: householdId,
+    member_id: memberId,
+    endpoint: parsed.endpoint,
+    p256dh: parsed.keys.p256dh,
+    auth: parsed.keys.auth,
+    user_agent: navigator.userAgent.slice(0, 200),
+  };
+  // Insert; if this device is already registered, refresh its keys instead.
+  // (An upsert would also try to update member_id/household_id, which clients may not change.)
+  const { error } = await sb.from("push_subscriptions").insert(row);
+  if (error?.code === "23505") {
+    const { error: upd } = await sb
+      .from("push_subscriptions")
+      .update({ p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent })
+      .eq("endpoint", row.endpoint);
+    if (upd) throw new Error(upd.message);
+  } else if (error) {
+    throw new Error(error.message);
+  }
   return "on";
 }
 

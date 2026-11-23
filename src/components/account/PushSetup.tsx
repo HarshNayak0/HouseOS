@@ -22,7 +22,12 @@ export function PushSetup({ householdId, memberId, showTest = false }: { househo
     try {
       setStatus(await enablePush(householdId, memberId));
     } catch (e) {
-      const text = e instanceof Error ? e.message : "Couldn't turn on notifications";
+      const text =
+        e instanceof Error
+          ? e.message
+          : typeof e === "object" && e && "message" in e
+            ? String((e as { message: unknown }).message)
+            : "Couldn't turn on notifications";
       const brave = typeof navigator !== "undefined" && "brave" in navigator;
       setMsg(
         brave && /push service/i.test(text)

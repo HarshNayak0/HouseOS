@@ -82,6 +82,16 @@ end $$;
 -- push subscriptions are private
 insert into public.push_subscriptions (household_id, member_id, endpoint, p256dh, auth)
   values (public.my_household_id(), public.my_member_id(), 'https://push.example.com/prerna', 'k', 'a');
+-- re-registering the same device: the app updates only the keys (an upsert is not allowed)
+update public.push_subscriptions set p256dh = 'k2', auth = 'a2', user_agent = 'phone' where endpoint = 'https://push.example.com/prerna';
+do $$ begin
+  assert (select p256dh from public.push_subscriptions where endpoint = 'https://push.example.com/prerna') = 'k2', 'keys refreshed';
+  insert into public.push_subscriptions (household_id, member_id, endpoint, p256dh, auth)
+    values (public.my_household_id(), public.my_member_id(), 'https://push.example.com/prerna', 'k', 'a')
+    on conflict (endpoint) do update set household_id = excluded.household_id, member_id = excluded.member_id, p256dh = excluded.p256dh;
+  raise exception 'upsert should have been refused';
+exception when insufficient_privilege then null;
+end $$;
 reset role;
 
 -- The invite is single-use, and the household is full
