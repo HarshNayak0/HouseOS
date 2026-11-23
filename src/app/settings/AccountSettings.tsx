@@ -172,13 +172,20 @@ interface Prefs {
   enabled: boolean;
   quiet_start: string;
   quiet_end: string;
+  kinds: Record<string, boolean>;
 }
+
+const KINDS: [string, string][] = [
+  ["notes", "New notes from your partner"],
+  ["chores", "Chores when they're due"],
+  ["tasks", "Tasks when they're due"],
+];
 
 function Notifications({ me }: { me: Member }) {
   const { data: prefs } = useQuery({
     queryKey: ["prefs", me.id],
     queryFn: async () => {
-      const { data } = (await supabaseBrowser()?.from("notification_prefs").select("enabled, quiet_start, quiet_end").eq("member_id", me.id).maybeSingle()) ?? {};
+      const { data } = (await supabaseBrowser()?.from("notification_prefs").select("enabled, quiet_start, quiet_end, kinds").eq("member_id", me.id).maybeSingle()) ?? {};
       return (data as Prefs | null) ?? null;
     },
   });
@@ -186,7 +193,7 @@ function Notifications({ me }: { me: Member }) {
   const [state, setState] = useState("idle");
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- seed the form once prefs load
-    if (prefs && !form) setForm({ ...prefs, quiet_start: prefs.quiet_start.slice(0, 5), quiet_end: prefs.quiet_end.slice(0, 5) });
+    if (prefs && !form) setForm({ ...prefs, kinds: prefs.kinds ?? {}, quiet_start: prefs.quiet_start.slice(0, 5), quiet_end: prefs.quiet_end.slice(0, 5) });
   }, [prefs, form]);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -194,7 +201,8 @@ function Notifications({ me }: { me: Member }) {
     const r = quietHoursSchema.safeParse(form);
     if (!r.success) return setState(r.error.issues[0].message);
     setState("saving");
-    const { error } = (await supabaseBrowser()?.from("notification_prefs").update({ ...r.data, enabled: form.enabled }).eq("member_id", me.id)) ?? {};
+    const { error } =
+      (await supabaseBrowser()?.from("notification_prefs").update({ ...r.data, enabled: form.enabled, kinds: form.kinds }).eq("member_id", me.id)) ?? {};
     setState(error ? error.message : "saved");
   };
   return (
@@ -206,6 +214,20 @@ function Notifications({ me }: { me: Member }) {
             <input type="checkbox" checked={form.enabled} onChange={(e) => setForm({ ...form, enabled: e.target.checked })} className="h-[18px] w-[18px] accent-red-oxide" />
             Send me notifications
           </label>
+          <fieldset className="m-0 mt-1 border-0 p-0 pl-6" disabled={!form.enabled}>
+            <legend className="sr-only">Which notifications</legend>
+            {KINDS.map(([k, label]) => (
+              <label key={k} className="flex min-h-11 items-center gap-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={form.kinds?.[k] !== false}
+                  onChange={(e) => setForm({ ...form, kinds: { ...form.kinds, [k]: e.target.checked } })}
+                  className="h-[18px] w-[18px] accent-red-oxide"
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
           <fieldset className="m-0 mt-2 border-0 p-0">
             <legend className="mb-1 text-sm font-bold">Quiet hours (Toronto time)</legend>
             <div className="flex items-center gap-2">

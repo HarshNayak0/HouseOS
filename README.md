@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 3 (shopping, tasks, chores, notes) built. Push reminders (phase 3b) next.
+**Status:** phase 3 done, including push reminders (3b). Next: phase 4, Google Calendar.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -65,6 +65,8 @@ See [`.env.example`](.env.example) for the full list and which phase needs each 
 | `SUPABASE_ANON_KEY` | keep-alive | Supabase → Project Settings → API → anon/public key |
 | `SUPABASE_DB_URL` | backup | Supabase → **Connect** → **Session pooler** connection string (with your DB password filled in) |
 | `BACKUP_PASSPHRASE` | backup | A long random passphrase you also save in your password manager |
+| `SUPABASE_ACCESS_TOKEN` | deploy functions | Supabase → your avatar → Account preferences → Access Tokens → Generate new token |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | deploy functions | The same values as in Vercel (`VAPID_PUBLIC_KEY` = `NEXT_PUBLIC_VAPID_PUBLIC_KEY`) |
 
 Until these exist, the keep-alive and backup workflows run but skip themselves with a notice.
 
@@ -139,6 +141,18 @@ Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `
 **2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
 
 **Performance check:** add `?debug=1` to the URL, then run `__veedu.info()` in the browser console for draw calls and triangles.
+
+## Reminders (push)
+
+`supabase/functions/notify` is a Supabase Edge Function that sends:
+
+- chore reminders at the due time (6 pm Toronto on the day) to whoever's turn it is
+- task reminders at the due time, or 9 am Toronto for date-only tasks
+- a notification to the other person when a note is posted
+
+`pg_cron` calls it every 5 minutes, and a trigger calls it straight after a note is posted. Each reminder is claimed in the database before it's sent, so nothing goes out twice. Quiet hours hold reminders until they end, and each person can switch the three kinds off in Settings. The rules live in `logic.ts` and are unit-tested in `tests/unit/reminders.test.ts`.
+
+The **Deploy Supabase functions** workflow deploys the function and its VAPID secrets whenever `supabase/functions/` changes on `main`. You can also run it by hand from the Actions tab.
 
 ## Accounts
 

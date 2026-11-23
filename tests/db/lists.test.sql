@@ -145,6 +145,15 @@ exception when check_violation then null;
 end $$;
 reset role;
 
+-- reminder bookkeeping is written only by the notify function (service role), never by the app
+select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
+do $$ begin
+  update public.tasks set reminded_due_at = now();
+  raise exception 'should have failed';
+exception when insufficient_privilege then null;
+end $$;
+reset role;
+
 -- a stranger sees none of it
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000c3');
 do $$ begin

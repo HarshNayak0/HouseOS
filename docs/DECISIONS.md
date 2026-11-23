@@ -4,6 +4,11 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Reminders: one `notify` Edge Function, called every 5 min by pg_cron (via pg_net) and right after a note is posted; rules in a pure, unit-tested `logic.ts` | One place for all push; cheap (~9k invocations/month of 500k free) |
+| 2026-11-24 | Each reminder is "claimed" (reminded_due_at / notified_at set with a conditional update) before sending | Overlapping runs can't double-send |
+| 2026-11-24 | Function deployed with no JWT check | It takes no input and only sends what's due, so calling it extra times is harmless; avoids storing a key in the database |
+| 2026-11-24 | Quiet hours delay a reminder until every recipient is out of quiet hours; opting out of a kind skips that person | Simple and predictable for two people in one time zone |
+| 2026-11-24 | Functions deployed by a GitHub Action with a Supabase access token | No pasting code into dashboards; updates ship with a push |
 | 2026-11-24 | Any "done" record can be removed later by either person (`remove_chore_completion`): the latest one restores the chore's due date and person, older ones just leave the log | Harsh asked for a way to fix a Done tapped by mistake after the Undo message is gone |
 | 2026-11-24 | Phase 3 lists: shopping (+ learned frequent items), tasks + subtasks (personal tasks hidden by RLS), chores + completions, notes | SPEC §4.1–4.5 core lists |
 | 2026-11-24 | Chore recurrence: RRULE evaluated on Toronto "floating" wall-clock time, then converted to UTC; chores due 18:00 Toronto; completing schedules the next date after max(due, now) | DST-safe; missed weeks don't pile up |
