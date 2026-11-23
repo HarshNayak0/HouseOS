@@ -20,7 +20,7 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
   const asideRef = useRef<HTMLElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [dragH, setDragH] = useState<number | null>(null);
-  const drag = useRef<{ y0: number; h0: number; moved: boolean } | null>(null);
+  const drag = useRef<{ y0: number; h0: number; moved: boolean; onGrab: boolean } | null>(null);
   const justDragged = useRef(false);
   if (!room && expanded) setExpanded(false); // a closed sheet reopens at half height
 
@@ -29,7 +29,8 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
   const onDown = (e: React.PointerEvent) => {
     if (!isPhone() || (e.target as HTMLElement).closest("button:not([data-grab])")) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    drag.current = { y0: e.clientY, h0: asideRef.current?.getBoundingClientRect().height ?? halfH(), moved: false };
+    const onGrab = !!(e.target as HTMLElement).closest("[data-grab]");
+    drag.current = { y0: e.clientY, h0: asideRef.current?.getBoundingClientRect().height ?? halfH(), moved: false, onGrab };
   };
   const onMove = (e: React.PointerEvent) => {
     const d = drag.current;
@@ -41,9 +42,15 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
   const onUp = () => {
     const d = drag.current;
     drag.current = null;
-    if (!d?.moved || dragH === null) return setDragH(null);
+    // Pointer capture retargets the click, so a tap on the grab bar is handled here
+    // (the button's own onClick stays for keyboard users).
     justDragged.current = true;
-    setTimeout(() => (justDragged.current = false), 0);
+    setTimeout(() => (justDragged.current = false), 300);
+    if (!d?.moved || dragH === null) {
+      setDragH(null);
+      if (d?.onGrab) setExpanded((v) => !v);
+      return;
+    }
     const h = dragH;
     setDragH(null);
     if (h < halfH() * 0.55) onClose();
