@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Manjari, Nunito_Sans } from "next/font/google";
+import { Providers } from "@/components/Providers";
 import "./globals.css";
 
 const nunito = Nunito_Sans({
@@ -24,6 +25,7 @@ const manjari = Manjari({
 export const metadata: Metadata = {
   title: "Veedu · വീട്",
   description: "Our home, Harsh and Prerna's.",
+  appleWebApp: { capable: true, title: "Veedu", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
@@ -38,7 +40,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${nunito.variable} ${fraunces.variable} ${manjari.variable} h-full antialiased`}
     >
-      <body className="min-h-full font-sans">{children}</body>
+      <body className="min-h-full font-sans">
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

@@ -4,6 +4,15 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Phase 2 tables limited to household, members, invites, settings, notification prefs, push subscriptions, activity log; later phases add their own migrations | Keeps each phase's schema reviewable; the full schema is still the plan in PLAN §3 |
+| 2026-11-23 | Invites, joining, leaving and household creation are `security definer` SQL functions; clients get column-level update grants only | Keeps the two-member rule, single-use 48 h tokens and roles enforceable in the database, not just the UI |
+| 2026-11-23 | Invite tokens: 24 random bytes (hex); only the SHA-256 hash is stored | A leaked database row can't be turned back into a working link |
+| 2026-11-23 | Session check in `src/proxy.ts` uses `getClaims()` (local JWT verification) | Avoids a network call to Supabase on every page view |
+| 2026-11-23 | App runs without accounts when the Supabase env vars are missing | CI and pre-setup deploys keep working; no fake auth needed in tests |
+| 2026-11-23 | RLS tests run on plain Postgres with a small Supabase stub (`tests/db/`), locally and as a CI job | Free, fast, and catches policy mistakes before they reach the real project |
+| 2026-11-23 | Test notification is sent from a Vercel route with `web-push`; scheduled reminders will be sent from Supabase Edge Functions (phase 3+) | Phase 2 only needs on-demand sending |
+| 2026-11-23 | Service worker caches nothing (push + notification click only) | Avoids stale versions of the app; offline support isn't in scope |
+| 2026-11-23 | Icons drawn as SVG and rendered to PNG once (`public/icons`, `src/app/icon.png`) | No paid assets; tiny files |
 | 2026-11-23 | "Camera animations" setting: follow the system reduce-motion setting (default) or always fly | Harsh's desktop has reduce motion on (so flights were instant by design) but he wants flights; default still respects the spec |
 | 2026-11-23 | Precompile shaders after load; frame-rate check skips the first second | First frames include one-off shader compilation, which made the slow-device check too pessimistic |
 | 2026-11-23 | Room camera framing computed to fit the room's bounding box into the screen area not covered by the panel/sheet (replaces the prototype's size-scaled offsets) | The prototype's offset grew with room size, so on phones the 16 m backyard view landed on the bedroom; unit tests now check every room on four screen sizes |

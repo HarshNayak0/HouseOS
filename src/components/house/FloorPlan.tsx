@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { COURT, DEFAULT_LABELS, ROOMS, roomPath, type Bounds, type RoomId } from "@/scene/config";
+import { COURT, ROOMS, roomPath, type Bounds, type RoomId, type RoomLabel } from "@/scene/config";
 
 /**
  * 2D top-down nalukettu map (SPEC §3.4 fallback). Same rooms and coordinates as the 3D house.
@@ -19,8 +19,10 @@ const isYardLabel = (id: RoomId) => id === "backyard";
 export function FloorPlan({
   selected,
   onRoomLink,
+  labels,
 }: {
   selected: RoomId | null;
+  labels: Record<RoomId, RoomLabel>;
   onRoomLink: (id: RoomId) => (e: React.MouseEvent) => void;
 }) {
   const order: RoomId[] = ["backyard", "office", "bedroom", "kitchen", "wash", "living", "closet"];
@@ -44,7 +46,7 @@ export function FloorPlan({
           </text>
           {order.map((id) => {
             const r = rect(ROOMS[id].bounds);
-            const label = DEFAULT_LABELS[id];
+            const label = labels[id];
             const on = selected === id;
             const [x0, x1, z0, z1] = ROOMS[id].bounds;
             // In 2D the backyard label sits below the pond so it doesn't cover it.

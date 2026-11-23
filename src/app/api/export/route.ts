@@ -1,0 +1,27 @@
+import { supabaseServer } from "@/lib/supabase/server";
+
+/** Tables included in "Export all data". Add each new table here as later phases create them. */
+const TABLES = ["households", "members", "household_settings", "notification_prefs", "activity_log", "invites"] as const;
+
+/** Downloads everything the signed-in person can see (RLS applies) as one JSON file. */
+export async function GET() {
+  const sb = await supabaseServer();
+  if (!sb) return Response.json({ error: "Not set up" }, { status: 503 });
+  const { data: claims } = await sb.auth.getClaims();
+  if (!claims?.claims?.sub) return Response.json({ error: "Not signed in" }, { status: 401 });
+
+  const out: Record<string, unknown> = { exported_at: new Date().toISOString(), app: "veedu", version: 1 };
+  for (const t of TABLES) {
+    const { data, error } = await sb.from(t).select(t === "invites" ? "id, household_id, expires_at, used_at, created_at" : "*");
+    if (error) return Response.json({ error: `Couldn't read ${t}` }, { status: 500 });
+    out[t] = data;
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  return new Response(JSON.stringify(out, null, 2), {
+    headers: {
+      "Content-Type": "application/json; charset=utf-8",
+      "Content-Disposition": `attachment; filename="veedu-export-${day}.json"`,
+      "Cache-Control": "no-store",
+    },
+  });
+}

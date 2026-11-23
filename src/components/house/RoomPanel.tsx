@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DEFAULT_LABELS, type RoomId } from "@/scene/config";
+import type { RoomId, RoomLabel } from "@/scene/config";
 import { PLACEHOLDERS } from "@/panels/placeholders";
 
 /**
  * The 2D panel for a room. Desktop: right-hand panel. Mobile (≤720 px): bottom sheet at ~58% height.
  * Matches the prototype: cream paper, brass border, kasavu band.
  */
-export function RoomPanel({ room, onClose }: { room: RoomId | null; onClose: () => void }) {
+export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onClose: () => void; labels: Record<RoomId, RoomLabel> }) {
   // Keep showing the last room while the panel slides closed.
   const [shown, setShown] = useState<RoomId | null>(room);
   if (room && room !== shown) setShown(room);
@@ -18,7 +18,7 @@ export function RoomPanel({ room, onClose }: { room: RoomId | null; onClose: () 
     if (room) headingRef.current?.focus({ preventScroll: true });
   }, [room]);
 
-  const label = shown ? DEFAULT_LABELS[shown] : null;
+  const label = shown ? labels[shown] : null;
   const ph = shown ? PLACEHOLDERS[shown] : null;
 
   return (

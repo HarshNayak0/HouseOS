@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 1 (3D house shell) done. Rooms open placeholder panels; real features arrive from phase 2.
+**Status:** phase 2 (sign-in and household) built; waiting for Supabase and Google to be set up. Rooms still show placeholder panels until phase 3.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -39,11 +39,23 @@ Hosting: Vercel Hobby (free `*.vercel.app` domain). Background jobs: Supabase `p
 3. Leave every setting at its default (Framework: Next.js) → **Deploy**.
 4. Every push to `main` now deploys to production, and every other branch gets its own preview URL.
 
-### 3. Environment variables
+### 3. Supabase and Google sign-in (phase 2)
+
+1. **Supabase project:** supabase.com → New project (Free, region Canada Central). Save the database password in a password manager.
+2. **Database:** SQL Editor → run each file in `supabase/migrations/` in name order (oldest first).
+3. **Google OAuth client:** Google Cloud console → new project → Google Auth Platform → External app, **published (In production)** → Web client with origin `https://veeduos.vercel.app` and redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
+4. **Supabase Auth:** Providers → Google → paste the client ID and secret. URL Configuration → Site URL `https://veeduos.vercel.app`; Redirect URLs `https://veeduos.vercel.app/**`, `https://*-harsh-s-vercel.vercel.app/**`, `http://localhost:3000/**`.
+5. **Vercel env vars:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:` + your email), then redeploy.
+
+New VAPID keys can be generated with `npx web-push generate-vapid-keys`. Changing them means everyone has to turn notifications on again.
+
+Until the Supabase variables are set, the app runs without accounts (this is also how CI runs).
+
+### 4. Environment variables
 
 See [`.env.example`](.env.example) for the full list and which phase needs each one. Values go in **Vercel → Project → Settings → Environment Variables** (and `.env.local` if you run the app on your own computer). Never commit real values.
 
-### 4. GitHub Secrets (for the scheduled workflows)
+### 5. GitHub Secrets (for the scheduled workflows)
 
 **GitHub → repo → Settings → Secrets and variables → Actions → New repository secret.** Added in phase 2:
 
@@ -81,6 +93,7 @@ Then open http://localhost:3000.
 | `npm test` | Unit tests (Vitest) |
 | `npm run test:e2e` | Browser tests (Playwright) at desktop and 375 px phone width; needs `npm run build` first |
 | `npm run check` | Lint + typecheck + unit tests |
+| `npm run test:db` | Applies the migrations to a throwaway Postgres and tests the RLS rules (`tests/db/`) |
 
 ## Automation (GitHub Actions)
 
@@ -126,6 +139,14 @@ Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `
 **2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
 
 **Performance check:** add `?debug=1` to the URL, then run `__veedu.info()` in the browser console for draw calls and triangles.
+
+## Accounts
+
+- **Sign-in:** Google, through Supabase Auth. `src/proxy.ts` refreshes the session and sends signed-out visitors to `/signin`.
+- **Household:** exactly two people. The first person creates it at `/onboarding`; Settings → Household makes a single-use invite link (48 h) for the second person.
+- **Database:** `supabase/migrations/`. Every table has row-level security limited to your own household; invites, joining and leaving go through checked database functions.
+- **Notifications:** Web Push with VAPID keys. `public/sw.js` shows them; Settings → Notifications turns them on per device and sends a test. iPhone needs Veedu added to the Home Screen first (iOS 16.4+); the app shows a guide.
+- **Export:** Settings → Your data downloads everything as JSON.
 
 ## Time zones
 

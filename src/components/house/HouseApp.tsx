@@ -2,10 +2,12 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { HouseController } from "@/scene/camera/controller";
-import { DEFAULT_LABELS, ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/scene/config";
+import { ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/scene/config";
+import { useHousehold, useRoomLabels } from "@/lib/household";
+import { authEnabled } from "@/lib/supabase/config";
 import { EMPTY_INDICATORS } from "@/scene/indicators/state";
 import {
   chooseView,
@@ -29,7 +31,15 @@ function roomFromPath(pathname: string | null): RoomId | null {
 
 export function HouseApp() {
   const pathname = usePathname();
+  const router = useRouter();
   const room = roomFromPath(pathname);
+  const labels = useRoomLabels();
+  const household = useHousehold();
+
+  // Signed in but not in a household yet → onboarding.
+  useEffect(() => {
+    if (authEnabled && household.data && !household.data.me) router.replace("/onboarding");
+  }, [household.data, router]);
 
   const [view, setView] = useState<ViewPref | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -142,9 +152,6 @@ export function HouseApp() {
             setMode(c.mode);
           }}
           onFps={(fps) => {
-            try {
-              localStorage.setItem("veedu.fps", String(Math.round(fps)));
-            } catch {}
             if (fps < SLOW_FPS && !readViewPref()) setSlowPrompt(true);
           }}
           onError={() => {
@@ -153,13 +160,13 @@ export function HouseApp() {
           }}
         />
       )}
-      {view === "2d" && <FloorPlan selected={room} onRoomLink={onRoomLink} />}
+      {view === "2d" && <FloorPlan selected={room} onRoomLink={onRoomLink} labels={labels} />}
 
       {/* Floating room labels (3D, inside view). Positions are written by the controller each frame. */}
       {view === "3d" && ctrl && (
         <div className="pointer-events-none fixed inset-0 z-[3]" aria-hidden={mode !== "inside" || !!room}>
           {ROOM_IDS.map((id) => {
-            const l = DEFAULT_LABELS[id];
+            const l = labels[id];
             return (
               <Link
                 key={id}
@@ -189,7 +196,7 @@ export function HouseApp() {
             {ROOM_IDS.map((id) => (
               <li key={id}>
                 <Link href={roomPath(id)} scroll={false} onClick={onRoomLink(id)} className="block rounded-full px-3 py-2 text-sm font-bold">
-                  {DEFAULT_LABELS[id].name}
+                  {labels[id].name}
                 </Link>
               </li>
             ))}
@@ -254,7 +261,7 @@ export function HouseApp() {
         </div>
       )}
 
-      <RoomPanel room={room} onClose={closePanel} />
+      <RoomPanel room={room} onClose={closePanel} labels={labels} />
 
       {view !== "2d" && !ctrl && !loadError && <LoadingScreen {...progress} />}
     </div>
