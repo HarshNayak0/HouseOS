@@ -22,7 +22,13 @@ export function PushSetup({ householdId, memberId, showTest = false }: { househo
     try {
       setStatus(await enablePush(householdId, memberId));
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Couldn't turn on notifications");
+      const text = e instanceof Error ? e.message : "Couldn't turn on notifications";
+      const brave = typeof navigator !== "undefined" && "brave" in navigator;
+      setMsg(
+        brave && /push service/i.test(text)
+          ? "Brave blocks notifications by default. Open brave://settings/privacy, turn on “Use Google services for push messaging”, relaunch Brave, then try again."
+          : text,
+      );
     }
     setBusy(false);
   };
