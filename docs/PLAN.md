@@ -491,7 +491,8 @@ Biggest pressure point: **GitHub Actions minutes** on a private repo. I'll keep 
 
 ## 6. Questions and risks
 
-**Questions for you**
+**Questions for you** — answered 2026-11-23: (1) show names "Harsh" / "Prerna"; (2) repo stays private; (3) the app creates the "Us" calendar in Harsh's account and shares it with Prerna; (4) both in America/Toronto.
+
 1. **Names in the UI.** I suggest showing **"Harsh"** and **"Prerna"** (chips, "updated by Prerna just now") instead of the prototype's "You / Her". Each device can still say "You" for its own user if you prefer. Which do you want?
 2. **Repo visibility.** The spec says private (2,000 free Actions min/mo). Fine with that budget, or would you make the repo public for unlimited minutes? (Secrets stay safe either way, but your code and plan would be visible.) I recommend staying private.
 3. **The "Us" calendar.** Do you already have a shared Google calendar, or should the app create one in your account and share it with Prerna?
