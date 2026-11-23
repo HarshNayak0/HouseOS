@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- plain Node script */
 /**
  * Renders the 3D house logo and writes the app icons.
  * Usage: NEXT_PUBLIC_DEV_PAGES=1 npm run build && npm start -- -p 3100   (in another terminal)
