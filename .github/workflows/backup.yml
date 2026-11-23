@@ -1,0 +1,59 @@
+# Weekly encrypted database backup (Supabase free tier has no point-in-time recovery).
+# Dumps roles, schema and data with the Supabase CLI, encrypts them with a passphrase,
+# and keeps them as a workflow artifact for 56 days (= the last 8 weekly backups).
+# Restore steps: docs/RESTORE.md
+name: Weekly backup
+
+on:
+  schedule:
+    - cron: "41 7 * * 0" # Sundays, 02:41 Toronto (EST)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # Session pooler connection string (IPv4). Supabase → Connect → Session pooler.
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Skip until secrets exist
+        id: gate
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::notice::SUPABASE_DB_URL / BACKUP_PASSPHRASE not set yet — skipping."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.run == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Dump
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          mkdir -p dump
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/data.sql --use-copy --data-only
+      - name: Encrypt
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          STAMP=$(date -u +%Y-%m-%d)
+          tar -czf "veedu-$STAMP.tar.gz" -C dump .
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" \
+            --symmetric --cipher-algo AES256 -o "veedu-$STAMP.tar.gz.gpg" "veedu-$STAMP.tar.gz"
+          rm -rf dump "veedu-$STAMP.tar.gz"
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+      - if: steps.gate.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: veedu-backup-${{ env.STAMP }}
+          path: veedu-*.tar.gz.gpg
+          retention-days: 56
+          if-no-files-found: error

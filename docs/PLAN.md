@@ -1,6 +1,6 @@
 # Veedu — build plan (for approval)
 
-Status: **proposal — waiting for Harsh's approval.** Nothing is built yet.
+Status: **approved 2026-11-23** (with the Instagram change below). Phase 0 done; phase 1 next.
 Based on `SPEC.md` (v3) and `reference/veedu-prototype.html`.
 
 People: **Harsh** (owner) and **Prerna Nair** (partner).
@@ -19,7 +19,7 @@ Each phase ends with: CI green → commit (conventional message) → push → Ve
 | 3 | **Core lists** | Shopping, tasks (+ subtasks), chores (RRULE, rotation, completion log, fairness line), notes board. Realtime + optimistic + soft delete/7-day trash. Fridge badge, laundry heap, nilavilakku driven by real data | none |
 | 4 | **Calendar** | Google Calendar OAuth (offline, production consent), incremental sync via `syncToken` on `pg_cron` every 15 min + on app open, day/week/month views, milestones with auto labels + 14/7/1-day reminders, gift ideas, September planner | Enable Calendar API, set consent screen to *In production*, create/choose the "Us" calendar |
 | 5 | **Dashboard** | Time-sensitive strip, merged Today, 7-day strip, pending, activity feed (last 20, pruned at 90 days), together-for-N-days counter | none |
-| 6 | **Recipes** | Manual recipes, ratings, scaler, add-to-list with duplicate merge, JSON-LD import, Instagram pipeline on GitHub Actions, caption-paste + video-upload fallbacks, review screen, Android share target, iOS paste flow | Gemini + Groq API keys; fine-grained GitHub token for `repository_dispatch`; GitHub Secrets |
+| 6 | **Recipes** | Manual recipes, ratings, scaler, add-to-list with duplicate merge, JSON-LD import, Instagram import by **pasted caption or uploaded video** (no link downloading), review screen, Android share target, iOS paste flow | Gemini + Groq API keys; fine-grained GitHub token for `repository_dispatch`; GitHub Secrets |
 | 7 | **Bedroom · backyard · closet** | Date ideas + Surprise me + memories timeline; trips, itinerary, bookings, packing, budget; vault with passkey/PIN re-unlock and encryption; petti glow, boat lantern, closet bell | Generate vault master key (I'll give a one-line command) |
 | 8 | **Polish** | Roof opening over the nadumuttam, automatic Toronto-sunset evening mode, performance pass on your phone, accessibility audit, full Playwright suite, usage monitor (70 % warning), final README | Test on your real phone |
 
@@ -499,7 +499,7 @@ Biggest pressure point: **GitHub Actions minutes** on a private repo. I'll keep 
 4. **Both in Toronto?** I'm assuming you both live in America/Toronto. Is that right?
 
 **Risks**
-1. **Instagram downloads from GitHub runners will often fail.** Instagram blocks datacenter IPs and increasingly requires login. The caption-paste and video-upload fallbacks will probably be the normal path, not the exception. I won't use your Instagram login cookies unless you explicitly ask (risk of your account being flagged).
+1. ~~Instagram downloads from GitHub runners will often fail.~~ **Resolved:** Harsh chose caption-paste / video-upload only. The app never downloads from Instagram; a pasted reel link is kept only as the source credit. The uploaded video still runs through the GitHub Actions pipeline (ffmpeg → transcribe → structure), capped at 60 imports a month.
 2. **Gemini free tier and data use.** Google may use free-tier prompts to improve its products. We only ever send recipe content (caption, transcript, frames), never vault, notes or calendar data, so I think this is acceptable. Tell me if not.
 3. **Vault encryption model.** The plan: AES-256-GCM envelope encryption on the server (per-item data key wrapped by a master key kept only in Vercel and Supabase secrets, never in the database). Unlocking needs passkey or PIN and gives a 5-minute session. This protects against a database leak or a lost backup. It does **not** protect against someone who controls the Vercel account, which is an inherent limit of a $0 setup without end-to-end encryption. Fine for Wi-Fi passwords and policy numbers; I'd avoid storing bank passwords.
 4. **Google OAuth "unverified app" screen.** With the consent screen set to *In production* but unverified, you'll both see a "Google hasn't verified this app" warning once and click through. That's expected and free.

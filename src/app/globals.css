@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/* Veedu design tokens (SPEC §6). Use as Tailwind classes, e.g. bg-paper, text-ink, border-brass. */
+@theme {
+  --color-plaster: #f6f1e7;
+  --color-paper: #fbf8f2;
+  --color-ink: #3b2418;
+  --color-ink-2: #7a6250;
+  --color-teak: #7a4527;
+  --color-red-oxide: #9c3b2a;
+  --color-terracotta: #b8613d;
+  --color-brass: #b8893b;
+  --color-brass-light: #e2c27a;
+  --color-leaf: #4f7a3a;
+  --color-urgent: #8a2b22;
+  --color-lotus: #c98b8b;
+  --color-evening: #1f1611;
+
+  /* person colours: Harsh = teak, Prerna = lotus, both = leaf */
+  --color-person-harsh: var(--color-teak);
+  --color-person-prerna: var(--color-lotus);
+  --color-person-both: var(--color-leaf);
+
+  --font-sans: var(--font-nunito-sans), system-ui, sans-serif;
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-ml: var(--font-manjari), var(--font-nunito-sans), sans-serif;
+
+  --ease-veedu: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --duration-panel: 220ms;
+  --duration-camera: 950ms;
+}
+
+html,
+body {
+  background: var(--color-plaster);
+  color: var(--color-ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Visible brass focus ring everywhere */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+/* Kasavu-style gold band used across the top of every panel */
+.kasavu {
+  height: 11px;
+  flex: none;
+  background:
+    linear-gradient(#fbf8f2 0 3px, transparent 3px),
+    repeating-linear-gradient(
+      90deg,
+      #b8893b 0 7px,
+      #e2c27a 7px 9px,
+      #b8893b 9px 12px,
+      #9a7230 12px 13px
+    );
+  border-bottom: 2px solid #8a6424;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
