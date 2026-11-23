@@ -138,7 +138,8 @@ async function gemini(text: string, sourceUrl: string | null, images: InlineImag
   const key = env("GEMINI_API_KEY");
   if (!key) return null;
   // Google retires model names over time: try the configured one, then the current aliases.
-  const models = [...new Set([env("GEMINI_MODEL"), "gemini-2.5-flash", "gemini-flash-latest"].filter(Boolean))];
+  // Busy (503/500) or missing (404) models fall through to the next one; the free tier is often busy at peak times.
+  const models = [...new Set([env("GEMINI_MODEL"), "gemini-2.5-flash", "gemini-flash-latest", "gemini-2.5-flash-lite", "gemini-flash-lite-latest"].filter(Boolean))];
   const body = JSON.stringify({
     systemInstruction: { parts: [{ text: PROMPT }] },
     contents: [
@@ -153,13 +154,28 @@ async function gemini(text: string, sourceUrl: string | null, images: InlineImag
     generationConfig: { responseMimeType: "application/json", responseSchema: GEMINI_SCHEMA, temperature: 0.1 },
   });
   let lastError = "";
+  const started = Date.now();
   for (const model of models) {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      signal: AbortSignal.timeout(60_000),
-      body,
-    });
+    let res: Response | null = null;
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (Date.now() - started > 75_000) break; // stay well inside the function's time limit
+      try {
+        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: AbortSignal.timeout(40_000),
+          body,
+        });
+      } catch {
+        res = null; // timeout / network: retry, then try the next model
+      }
+      if (res && res.status !== 503 && res.status !== 500) break;
+      lastError = res ? `${model} busy (${res.status})` : `${model} timed out`;
+      if (res) console.error("gemini", model, res.status, (await res.text()).slice(0, 200));
+      res = null;
+      await new Promise((r) => setTimeout(r, 1500 * (attempt + 1)));
+    }
+    if (!res) continue; // busy or timed out: next model
     if (!res.ok) {
       const detail = (await res.text()).slice(0, 400);
       console.error("gemini", model, res.status, detail);
@@ -189,7 +205,7 @@ async function gemini(text: string, sourceUrl: string | null, images: InlineImag
     }
     return normalizeAiDraft(parsed, sourceUrl); // null = it looked but found no recipe
   }
-  throw new GeminiError(`Gemini isn't available right now (${lastError}).`);
+  throw new GeminiError(`Gemini is busy right now (${lastError}). Try again in a few minutes.`);
 }
 
 async function importRecipe(m: { id: string; household_id: string; user_id: string }, body: Record<string, unknown>) {
