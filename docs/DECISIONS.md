@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Any "done" record can be removed later by either person (`remove_chore_completion`): the latest one restores the chore's due date and person, older ones just leave the log | Harsh asked for a way to fix a Done tapped by mistake after the Undo message is gone |
 | 2026-11-24 | Phase 3 lists: shopping (+ learned frequent items), tasks + subtasks (personal tasks hidden by RLS), chores + completions, notes | SPEC §4.1–4.5 core lists |
 | 2026-11-24 | Chore recurrence: RRULE evaluated on Toronto "floating" wall-clock time, then converted to UTC; chores due 18:00 Toronto; completing schedules the next date after max(due, now) | DST-safe; missed weeks don't pile up |
 | 2026-11-24 | `complete_chore` / `undo_chore_completion` RPCs; the app passes the next date (computed from the RRULE), the database checks it moves forward and handles rotation | Keeps the completion log, rotation and next date consistent in one transaction |

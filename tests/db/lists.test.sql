@@ -102,20 +102,36 @@ do $$ begin
   assert (select due_at from public.chore_completions) = '2026-11-24 23:00+00', 'completion keeps the due date';
 end $$;
 reset role;
--- Prerna can't undo Harsh's completion
+-- Either person can remove a completion record; the latest one restores the chore
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000b2');
 do $$ begin
-  perform public.undo_chore_completion((select id from t_c));
+  assert public.remove_chore_completion((select id from t_c)) = 'undone', 'latest completion undone';
+  assert (select next_due_at from public.chores) = '2026-11-24 23:00+00', 'remove restores due date';
+  assert (select assignee_id from public.chores) = (select id from public.members where display_name = 'Harsh'), 'remove restores assignee';
+  assert (select count(*) from public.chore_completions where deleted_at is null) = 0, 'completion removed from the log';
+end $$;
+-- removing it twice explains itself
+do $$ begin
+  perform public.remove_chore_completion((select id from t_c));
   raise exception 'should have failed';
 exception when no_data_found then null;
 end $$;
 reset role;
+-- an older record is removed from the log without touching the schedule
 select pg_temp.as_user('00000000-0000-0000-0000-0000000000a1');
-select public.undo_chore_completion((select id from t_c));
+delete from t_c;
+insert into t_c select public.complete_chore((select id from public.chores), '2026-12-01 23:00+00');
+select pg_sleep(0.01);
+select public.complete_chore((select id from public.chores), '2026-12-08 23:00+00');
 do $$ begin
-  assert (select next_due_at from public.chores) = '2026-11-24 23:00+00', 'undo restores due date';
-  assert (select assignee_id from public.chores) = public.my_member_id(), 'undo restores assignee';
-  assert (select count(*) from public.chore_completions) = 0, 'completion removed';
+  assert public.remove_chore_completion((select id from t_c)) = 'removed', 'older record just removed';
+  assert (select next_due_at from public.chores) = '2026-12-08 23:00+00', 'schedule unchanged';
+  assert (select count(*) from public.chore_completions where deleted_at is null) = 1, 'one record left';
+end $$;
+-- the Undo button path still works for the latest
+select public.undo_chore_completion((select id from public.chore_completions where deleted_at is null));
+do $$ begin
+  assert (select next_due_at from public.chores) = '2026-12-01 23:00+00', 'undo restores the previous due date';
 end $$;
 reset role;
 

@@ -8,7 +8,7 @@ import { live, rowsKey, trashed, useRowMutation, useRows, type BaseRow } from "@
 import { toast } from "@/lib/lists/toast";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
-import { EmptyState, PartnerHint, Sec, Trash, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
+import { EmptyState, IconButton, PartnerHint, Sec, Trash, TrashIcon, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 export interface Chore extends BaseRow {
   title: string;
@@ -91,7 +91,8 @@ export function Chores() {
   const weekStart = weekStartKey();
   const thisWeek = live(comps).filter((c) => torontoDayKey(c.completed_at) >= weekStart);
   const count = (id?: string) => thisWeek.filter((c) => c.completed_by === id).length;
-  const recent = live(comps).slice(0, 8);
+  const [showAll, setShowAll] = useState(false);
+  const recent = live(comps).slice(0, showAll ? 40 : 8);
   const choreTitle = (id: string) => (rows ?? []).find((c) => c.id === id)?.title ?? "a chore";
 
   return (
@@ -132,14 +133,56 @@ export function Chores() {
       {recent.length > 0 && (
         <Sec title="Recently done">
           {recent.map((c) => (
-            <p key={c.id} className="m-0 border-b border-dashed border-[#e6d9c2] py-1.5 text-sm last:border-b-0">
-              <b>{byId(c.completed_by)?.display_name ?? "Someone"}</b> did {choreTitle(c.chore_id)}
-              <span className="text-ink-2"> · {formatToronto(c.completed_at, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
-            </p>
+            <DoneRow key={c.id} c={c} who={byId(c.completed_by)?.display_name ?? "Someone"} title={choreTitle(c.chore_id)} />
           ))}
+          {live(comps).length > recent.length && (
+            <button type="button" className={linkBtn} onClick={() => setShowAll(true)}>
+              Show more
+            </button>
+          )}
         </Sec>
       )}
     </>
+  );
+}
+
+/** One "done" record, with a remove button (for a Done tapped by mistake). */
+function DoneRow({ c, who, title }: { c: Completion; who: string; title: string }) {
+  const qc = useQueryClient();
+  const [confirm, setConfirm] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const remove = async () => {
+    setBusy(true);
+    const { data, error } = await supabaseBrowser()!.rpc("remove_chore_completion", { p_completion: c.id });
+    setBusy(false);
+    setConfirm(false);
+    if (error) return toast(error.message, { tone: "error" });
+    const when = dueState(c.due_at) === "overdue" ? "overdue again" : `due ${dueLabel(c.due_at).toLowerCase()} again`;
+    toast(data === "undone" ? `Removed. “${title}” is ${when}` : "Removed from the log");
+    qc.invalidateQueries({ queryKey: rowsKey("chores") });
+    qc.invalidateQueries({ queryKey: rowsKey("chore_completions") });
+  };
+  return (
+    <div className="flex min-h-11 items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-sm last:border-b-0">
+      <p className="m-0 grow">
+        <b>{who}</b> did {title}
+        <span className="text-ink-2"> · {formatToronto(c.completed_at, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
+      </p>
+      {confirm ? (
+        <span className="flex flex-none items-center gap-1">
+          <button type="button" className={`${linkBtn} text-urgent`} onClick={remove} disabled={busy}>
+            {busy ? "Removing…" : "Remove"}
+          </button>
+          <button type="button" className={linkBtn} onClick={() => setConfirm(false)}>
+            Keep
+          </button>
+        </span>
+      ) : (
+        <IconButton label={`Remove the record of ${who} doing ${title}`} onClick={() => setConfirm(true)}>
+          <TrashIcon />
+        </IconButton>
+      )}
+    </div>
   );
 }
 
