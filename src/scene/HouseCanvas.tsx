@@ -69,6 +69,8 @@ function Scene(props: HouseCanvasProps) {
         if (new URLSearchParams(location.search).has("debug")) {
           (window as unknown as { __veedu: unknown }).__veedu = {
             stats: model.stats,
+            ctrl,
+            cam: () => camera.position.toArray().map((v) => +v.toFixed(2)),
             info: () => ({ calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures }),
           };
         }
@@ -148,7 +150,7 @@ export default function HouseCanvas(props: HouseCanvasProps) {
       legacy
       shadows="percentage"
       dpr={[1, 2]}
-      camera={{ fov: 42, near: 0.1, far: 300, position: [14, 8.9, 19] }}
+      camera={{ fov: 42, near: 0.5, far: 200, position: [14, 8.9, 19] }}
       gl={{ antialias: true, powerPreference: "high-performance" }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;

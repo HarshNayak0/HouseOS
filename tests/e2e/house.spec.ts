@@ -19,6 +19,15 @@ test.describe("2D floor plan", () => {
     await expect(page).toHaveURL(/\/$/);
   });
 
+  test("the back button closes the panel", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: /^Wash area/ }).click();
+    await expect(page.getByRole("heading", { name: "Wash area", level: 2 })).toBeVisible();
+    await page.goBack();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { name: "Wash area", level: 2 })).toBeHidden();
+  });
+
   test("deep link opens that room", async ({ page }) => {
     await page.goto("/office");
     await expect(page.getByRole("heading", { name: "Office", level: 2 })).toBeVisible();

@@ -86,16 +86,27 @@ export class HouseController {
     this.tweens.push({ t0: performance.now(), ms, fn, done });
   }
 
+  /**
+   * Fly the camera to a view. Instead of moving in a straight line (which cuts across the house
+   * when the camera has drifted round the back), the camera orbits: the target glides to its new
+   * point while the camera's angle round it and distance from it are interpolated the short way.
+   */
   private fly(v: View, ms = 1000) {
-    const p0 = this.camera.position.clone(),
-      t0 = this.controls.target.clone();
+    const t0 = this.controls.target.clone();
+    const s0 = new THREE.Spherical().setFromVector3(this.camera.position.clone().sub(t0));
+    const s1 = new THREE.Spherical().setFromVector3(v.p.clone().sub(v.t));
+    let dTheta = s1.theta - s0.theta;
+    if (dTheta > Math.PI) dTheta -= Math.PI * 2;
+    if (dTheta < -Math.PI) dTheta += Math.PI * 2;
+    const s = new THREE.Spherical();
     this.controls.enabled = false;
     this.controls.autoRotate = false;
     this.tween(
       ms,
       (k) => {
-        this.camera.position.lerpVectors(p0, v.p, k);
         this.controls.target.lerpVectors(t0, v.t, k);
+        s.set(s0.radius + (s1.radius - s0.radius) * k, s0.phi + (s1.phi - s0.phi) * k, s0.theta + dTheta * k);
+        this.camera.position.setFromSpherical(s).add(this.controls.target);
       },
       () => {
         this.controls.enabled = true;
@@ -307,6 +318,9 @@ export class HouseController {
       f.scale.set(s, s * (anim ? 1 + 0.3 * Math.sin(t * 7 + i) : 1), s);
     });
     if (note) m.lamps[0].intensity = Math.max(m.lamps[0].intensity, lampIntensity(1.3 * (0.85 + 0.15 * Math.sin(t * 8))));
+    // The hanging verandah lamps lift away with the roof, so their light fades with it.
+    const roofOpacity = m.roof.visible ? (m.roofMats[0].opacity ?? 1) : 0;
+    for (const i of [1, 2]) if (m.lamps[i]) m.lamps[i].intensity *= roofOpacity;
     // boat lantern: only lit when a trip is coming up
     const boatLamp = m.lamps[3];
     if (boatLamp && !this.ind.tripSoon) boatLamp.intensity = 0;

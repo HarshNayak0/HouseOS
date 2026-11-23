@@ -4,6 +4,11 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Room changes use `history.pushState` and start the camera flight immediately | `router.push` waited for a server request first, so the fly-in started late or looked skipped |
+| 2026-11-23 | Camera flights orbit (interpolate angle/distance round the target) instead of moving in a straight line | After the idle drift, straight-line flights cut across the house at odd angles, especially on phones |
+| 2026-11-23 | Verandah lamp lights fade with the roof | The fittings lift away with the roof; their light stayed and left bright spots on the polished floor |
+| 2026-11-23 | Teak wall-plates raised 12 mm above the wall tops; camera near plane 0.1 → 0.5 m | Coplanar tops flickered (z-fighting) between white plaster and teak |
+| 2026-11-23 | Extra furniture detail in `props/details.ts` (kitchen sink, cabinet doors, wardrobe, desk lamp, coats, bucket…) | Harsh asked for more realistic rooms; built after the prototype pieces so its random sequence is unchanged; +70 meshes merge into ~20 extra draw calls |
 | 2026-11-23 | Phase 1: scene ported as typed builder modules hosted in R3F (`<Canvas>` + drei `OrbitControls`), not rewritten as JSX meshes | Keeps every coordinate, texture and RNG call identical to the prototype ("port, don't redesign") |
 | 2026-11-23 | Static geometry merged per material at load (734 meshes → 64) instead of hand-instancing | Same draw-call saving as instancing with far less code; animated/pickable objects stay separate |
 | 2026-11-23 | Colour management off (`<Canvas legacy>`) and light intensities × π | Reproduces the r128 prototype's look on three.js r187 |

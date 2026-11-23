@@ -16,7 +16,13 @@ const HALL: Bounds = [-2.5, 3, -2, 3];
 
 const isYardLabel = (id: RoomId) => id === "backyard";
 
-export function FloorPlan({ selected }: { selected: RoomId | null }) {
+export function FloorPlan({
+  selected,
+  onRoomLink,
+}: {
+  selected: RoomId | null;
+  onRoomLink: (id: RoomId) => (e: React.MouseEvent) => void;
+}) {
   const order: RoomId[] = ["backyard", "office", "bedroom", "kitchen", "wash", "living", "closet"];
   return (
     <div
@@ -49,6 +55,7 @@ export function FloorPlan({ selected }: { selected: RoomId | null }) {
                 key={id}
                 href={roomPath(id)}
                 scroll={false}
+                onClick={onRoomLink(id)}
                 aria-label={`${label.name}${label.ml ? ` (${label.ml})` : ""}: ${label.feature}`}
                 aria-current={on ? "page" : undefined}
                 className="group outline-none"

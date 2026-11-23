@@ -58,7 +58,7 @@ export function buildWalls(ctx: BuildCtx): THREE.Group {
     cp(-5.75, 6, 2.7, 0.2);
     cp(-4.5, 3.45, 0.2, 1.1);
     cp(-4.5, 5.55, 0.2, 1.1);
-    b.box(M.teak, 2.7, 0.15, 0.26, -5.75, CH - 0.15, 6, walls);
+    b.box(M.teak, 2.7, 0.15, 0.26, -5.75, CH - 0.15 + 0.012, 6, walls);
   }
   wallX(-2, -7, 3, [
     [-4.75, 0.9],
@@ -95,9 +95,11 @@ export function buildWalls(ctx: BuildCtx): THREE.Group {
   winZ(7, -3.5);
   winZ(7, 1.2);
   // teak wall-plate along the top of outer walls
-  b.box(M.teak, 14.2, 0.18, 0.26, 0, WH - 0.18, -6, walls);
-  b.box(M.teak, 0.26, 0.18, 12.2, -7, WH - 0.18, 0, walls);
-  b.box(M.teak, 0.26, 0.18, 9.2, 7, WH - 0.18, -1.5, walls);
+  // (raised a hair above the wall top so the two surfaces don't z-fight / flicker)
+  const PLATE = WH - 0.18 + 0.012;
+  b.box(M.teak, 14.2, 0.18, 0.26, 0, PLATE, -6, walls);
+  b.box(M.teak, 0.26, 0.18, 12.2, -7, PLATE, 0, walls);
+  b.box(M.teak, 0.26, 0.18, 9.2, 7, PLATE, -1.5, walls);
   return walls;
 }
 

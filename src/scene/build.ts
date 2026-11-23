@@ -14,6 +14,7 @@ import { buildIndicators, type Indicators } from "./indicators";
 import { createLighting, type Lighting } from "./lighting";
 import { colorMaterialCache, createMaterials } from "./materials";
 import { mergeStatic } from "./merge";
+import { buildDetails } from "./props/details";
 import { buildFurniture, type FurnitureRefs } from "./props/furniture";
 import { Rng } from "./rng";
 import { buildFloors } from "./rooms/floors";
@@ -93,6 +94,7 @@ export async function buildHouse(opts: BuildOptions): Promise<HouseModel> {
   await step("Tiling the roof…");
   const backyard = buildBackyard(ctx);
   await step("Planting coconut palms…");
+  buildDetails(ctx); // extra detail beyond the prototype (after it, so its RNG sequence is unchanged)
   const indicators = buildIndicators(ctx, opts.fontFamily);
   await step("Lighting the lamps…");
 

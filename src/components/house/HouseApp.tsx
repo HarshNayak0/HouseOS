@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { HouseController } from "@/scene/camera/controller";
 import { DEFAULT_LABELS, ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/scene/config";
@@ -29,7 +29,6 @@ function roomFromPath(pathname: string | null): RoomId | null {
 
 export function HouseApp() {
   const pathname = usePathname();
-  const router = useRouter();
   const room = roomFromPath(pathname);
 
   const [view, setView] = useState<ViewPref | null>(null);
@@ -51,8 +50,24 @@ export function HouseApp() {
     setView(v);
   }, []);
 
-  const goRoom = useCallback((id: RoomId) => router.push(roomPath(id), { scroll: false }), [router]);
-  const closePanel = useCallback(() => router.push("/", { scroll: false }), [router]);
+  // Room changes use the History API directly: the camera starts flying immediately and no
+  // server round trip is needed (Next.js keeps usePathname in sync with pushState).
+  const goRoom = useCallback(
+    (id: RoomId) => {
+      ctrl?.select(id);
+      if (window.location.pathname !== roomPath(id)) window.history.pushState(null, "", roomPath(id));
+    },
+    [ctrl],
+  );
+  const closePanel = useCallback(() => {
+    ctrl?.clearSelection();
+    if (window.location.pathname !== "/") window.history.pushState(null, "", "/");
+  }, [ctrl]);
+  const onRoomLink = (id: RoomId) => (e: React.MouseEvent) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; // let "open in new tab" work
+    e.preventDefault();
+    goRoom(id);
+  };
 
   // Controller callbacks
   useEffect(() => {
@@ -135,7 +150,7 @@ export function HouseApp() {
           }}
         />
       )}
-      {view === "2d" && <FloorPlan selected={room} />}
+      {view === "2d" && <FloorPlan selected={room} onRoomLink={onRoomLink} />}
 
       {/* Floating room labels (3D, inside view). Positions are written by the controller each frame. */}
       {view === "3d" && ctrl && (
@@ -148,6 +163,7 @@ export function HouseApp() {
                 href={roomPath(id)}
                 scroll={false}
                 ref={(el) => ctrl.registerLabel(id, el)}
+                onClick={onRoomLink(id)}
                 style={{ opacity: 0 }}
                 className="absolute top-0 left-0 cursor-pointer rounded-full border border-brass bg-[rgba(251,248,242,0.94)] px-[11px] pt-1 pb-[3px] text-center text-[12.5px] leading-[1.15] font-bold whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(59,36,24,0.15)] transition-opacity duration-300 hover:bg-[#fff6e2]"
               >
@@ -169,7 +185,7 @@ export function HouseApp() {
           <ul className="flex flex-wrap gap-2">
             {ROOM_IDS.map((id) => (
               <li key={id}>
-                <Link href={roomPath(id)} scroll={false} className="block rounded-full px-3 py-2 text-sm font-bold">
+                <Link href={roomPath(id)} scroll={false} onClick={onRoomLink(id)} className="block rounded-full px-3 py-2 text-sm font-bold">
                   {DEFAULT_LABELS[id].name}
                 </Link>
               </li>
