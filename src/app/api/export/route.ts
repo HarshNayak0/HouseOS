@@ -20,6 +20,10 @@ const TABLES = [
   "calendar_event_cache",
   "milestones",
   "gift_ideas",
+  "recipes",
+  "recipe_ingredients",
+  "recipe_steps",
+  "recipe_ratings",
 ] as const;
 
 /** Downloads everything the signed-in person can see (RLS applies) as one JSON file. */

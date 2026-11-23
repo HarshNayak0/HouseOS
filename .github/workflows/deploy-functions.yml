@@ -28,6 +28,7 @@ jobs:
       GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - name: Skip until the access token exists
         id: gate
@@ -56,12 +57,17 @@ jobs:
           else
             echo "::notice::Google Calendar secrets not set yet — the calendar function will say it isn't set up."
           fi
+          if [ -n "$GEMINI_API_KEY" ]; then
+            args+=(GEMINI_API_KEY="$GEMINI_API_KEY")
+          else
+            echo "::notice::GEMINI_API_KEY not set — caption imports use the simple rule-based reader."
+          fi
           supabase secrets set --yes --project-ref "$PROJECT_REF" "${args[@]}"
       - name: Deploy functions
         if: steps.gate.outputs.run == 'true'
         # no JWT check: notify takes no input; calendar checks the caller's session itself where needed
         run: |
-          for fn in notify calendar; do
+          for fn in notify calendar recipes; do
             supabase functions deploy "$fn" --yes --project-ref "$PROJECT_REF" --no-verify-jwt
           done
       - name: Run once

@@ -26,7 +26,11 @@ export type ListTable =
   | "calendar_sources"
   | "calendar_event_cache"
   | "milestones"
-  | "gift_ideas";
+  | "gift_ideas"
+  | "recipes"
+  | "recipe_ingredients"
+  | "recipe_steps"
+  | "recipe_ratings";
 export const rowsKey = (t: ListTable) => ["rows", t] as const;
 
 export interface BaseRow {
@@ -46,6 +50,9 @@ const ORDER: Partial<Record<ListTable, { column: string; ascending: boolean; lim
   item_frequency: { column: "times_added", ascending: false, limit: 300 },
   calendar_event_cache: { column: "starts_at", ascending: true, limit: 3000 },
   milestones: { column: "base_date", ascending: true },
+  recipes: { column: "created_at", ascending: false },
+  recipe_ingredients: { column: "position", ascending: true, limit: 5000 },
+  recipe_steps: { column: "position", ascending: true, limit: 5000 },
 };
 
 /** Tables whose secret columns the app may not read. */
@@ -144,6 +151,10 @@ const LIVE_TABLES: ListTable[] = [
   "calendar_event_cache",
   "milestones",
   "gift_ideas",
+  "recipes",
+  "recipe_ingredients",
+  "recipe_steps",
+  "recipe_ratings",
 ];
 
 /**

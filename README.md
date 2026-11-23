@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 5 (living-room dashboard) done. Next: phase 6, recipes.
+**Status:** phase 6 (recipe box) built. Next: phase 7, bedroom, backyard and closet.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -69,6 +69,7 @@ See [`.env.example`](.env.example) for the full list and which phase needs each 
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | deploy functions | The same values as in Vercel (`VAPID_PUBLIC_KEY` = `NEXT_PUBLIC_VAPID_PUBLIC_KEY`) |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | deploy functions | Google Cloud → Google Auth Platform → Clients → your web client |
 | `TOKEN_ENCRYPTION_KEY` | deploy functions | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts Google refresh tokens. |
+| `GEMINI_API_KEY` | deploy functions | Google AI Studio → Get API key (free tier). Optional: without it, captions are read by simple rules. |
 
 Until these exist, the keep-alive and backup workflows run but skip themselves with a notice.
 
@@ -155,6 +156,19 @@ Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `
 - **Milestones:** yearly, editable in Settings. The four from the spec are filled in automatically. Reminders go out 14, 7 and 1 days before at 9 am, sent by `notify`; birthday reminders only go to the other person. Gift ideas are hidden from the person they're for (RLS).
 
 Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, and this redirect URI on the web client: `https://<project-ref>.supabase.co/functions/v1/calendar/callback`.
+
+## Recipes
+
+- **Recipe box** (Kitchen): search by title, tag or ingredient; sort by newest, rating or time. Each recipe has both your 1–5 ratings and notes, a servings scaler, and "add to the shopping list", which skips anything already on the list.
+- **Imports** (`supabase/functions/recipes`):
+  - Website links use the page's schema.org JSON-LD first, with no AI. Gemini is the fallback.
+  - Pasted Instagram captions go to Gemini, or to the rule-based reader if no key is set.
+  - Gemini never invents amounts: missing ones stay blank, and the review screen highlights anything uncertain before you save.
+  - The limit is 20 imports a day and 60 a month.
+  - Instagram is never downloaded from. Paste the caption; the link is kept as the source.
+- **Photos** are compressed in the browser to WebP (at most 1600 px, about 200 KB) and stored in the private `recipe-photos` bucket, one folder per household. Imported photos are copied in, never linked from the original site.
+- **Sharing on Android:** Share → Veedu opens the importer (PWA share target). On iPhone, use the importer's **Paste** button.
+- Parsing lives in `supabase/functions/_shared/recipe.ts` and is unit-tested in `tests/unit/recipe-parse.test.ts`.
 
 ## Reminders (push)
 

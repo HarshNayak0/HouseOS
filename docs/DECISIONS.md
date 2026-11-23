@@ -4,6 +4,14 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Recipe imports: no video upload, no Groq; Gemini (free tier) for pasted captions and for websites without JSON-LD; JSON-LD first, no AI | Harsh's choice; fewest keys, still $0; no GitHub media worker needed |
+| 2026-11-24 | Imports run synchronously in a `recipes` Edge Function; `recipe_import_jobs` logs each one (rate limit 20/day, 60/month; kept 60 days) | Seconds, not minutes, without video; the log enforces the limit |
+| 2026-11-24 | AI answers are validated and cleaned (`normalizeAiDraft`): missing amounts stay null and are flagged | SPEC: never invent quantities |
+| 2026-11-24 | Rule-based caption reader as a fallback when Gemini is missing or fails | Imports still work at zero AI |
+| 2026-11-24 | Recipes are created/edited only via `save_recipe()` (one transaction: recipe + ingredients + steps) | Keeps a recipe and its parts consistent; clients can't half-write one |
+| 2026-11-24 | Photos: browser WebP compression, private Storage bucket per household, signed URLs; imported photos are copied in via the function | SPEC storage hygiene; never hotlink |
+| 2026-11-24 | Importer refuses local/private addresses and caps downloads (4 MB pages, 6 MB images) | Stops the function being used to probe internal services |
+| 2026-11-24 | Ratings: insert then update (not upsert) | Upsert would try to rewrite key columns the app isn't granted |
 | 2026-11-24 | Dashboard built entirely from existing data on the client; ranking of the time-sensitive strip is a pure, unit-tested function (`src/lib/dashboard.ts`) | No new tables or server work; trips and vault renewals slot in when phase 7 adds them |
 | 2026-11-24 | Date-only tasks count as overdue after their day; timed tasks after their time | Matches how people read "due today" |
 | 2026-11-24 | Dashboard items open their room in place (`history.pushState`), so the camera flies there | Feels like moving through the house |
