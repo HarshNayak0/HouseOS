@@ -4,6 +4,8 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Room camera framing computed to fit the room's bounding box into the screen area not covered by the panel/sheet (replaces the prototype's size-scaled offsets) | The prototype's offset grew with room size, so on phones the 16 m backyard view landed on the bedroom; unit tests now check every room on four screen sizes |
+| 2026-11-23 | "This device" report in Settings (version, view setting, reduce-motion, measured fps, GPU, screen) | To diagnose device-specific 3D problems without guessing |
 | 2026-11-23 | Camera is aimed at the target on every flight frame (`camera.lookAt`) | drei only runs `OrbitControls.update()` (which aims the camera) while controls are enabled; they are disabled during flights, so the camera slid without turning, then snapped at the end |
 | 2026-11-23 | App version (commit) shown at the bottom of Settings | To confirm a phone is running the latest deploy |
 | 2026-11-23 | Room changes use `history.pushState` and start the camera flight immediately | `router.push` waited for a server request first, so the fly-in started late or looked skipped |

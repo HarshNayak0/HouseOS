@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { DeviceReport } from "./DeviceReport";
 import { ViewSetting } from "./SettingsView";
 
 export const metadata: Metadata = { title: "Settings · Veedu" };
@@ -38,7 +39,8 @@ export default function SettingsPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-6 text-xs text-ink-2">Version {process.env.NEXT_PUBLIC_BUILD}</p>
+          <h2 className="mt-6 mb-1.5 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">This device</h2>
+          <DeviceReport />
         </div>
       </section>
     </main>

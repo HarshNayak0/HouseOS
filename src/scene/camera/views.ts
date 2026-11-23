@@ -28,22 +28,80 @@ export function roomCenter(id: RoomId) {
   return new THREE.Vector3((x0 + x1) / 2, P, (z0 + z1) / 2);
 }
 
+/** Screen area (in normalised device coords, -1..1, y up) not covered by the header or the panel. */
+export function freeRegion(w: number, h: number) {
+  if (isWide(w)) {
+    // desktop: 370 px panel + 16 px margin on the right, ~70 px header on top
+    return { x0: -1, x1: 1 - (2 * (370 + 32)) / w, y0: -1, y1: 1 - (2 * 70) / h };
+  }
+  // phone: bottom sheet covers 58% of the height (+8 px); the header can wrap to ~110 px
+  const sheetTop = h * 0.42 - 8;
+  return { x0: -1, x1: 1, y0: 1 - (2 * sheetTop) / h, y1: 1 - (2 * 110) / h };
+}
+
+const UP = new THREE.Vector3(0, 1, 0);
+
 /**
- * Camera for a selected room. The target is offset so the room stays visible beside the
- * desktop panel (right) or above the mobile bottom sheet.
+ * Camera for a selected room: looks at the room from the prototype's angle, and picks the
+ * distance and a sideways shift so the whole room fits in the free part of the screen
+ * (beside the desktop panel, or above the phone's bottom sheet).
  */
-export function roomView(id: RoomId, w: number, h: number): View {
+export function roomView(id: RoomId, w: number, h: number, fov = 42): View {
   const [x0, x1, z0, z1] = ROOMS[id].bounds;
   const s = Math.max(x1 - x0, z1 - z0);
-  const t = roomCenter(id);
-  t.y = P + 0.4;
-  let off = new THREE.Vector3(s * 0.35, s * 0.95 + 2.6, s * 0.85 + 2.4);
-  if (id === "backyard") off = new THREE.Vector3(3, 9, 11);
-  if (isPortrait(w, h)) {
-    off.multiplyScalar(1.45);
-    t.z += s * 0.55 + 1.2;
-  } else if (isWide(w)) {
-    t.x += s * 0.32 + 0.8;
+  const yard = id === "backyard";
+  const yLo = yard ? 0 : P,
+    yHi = yard ? 1.5 : P + 1.2;
+  const c = new THREE.Vector3((x0 + x1) / 2, (yLo + yHi) / 2, (z0 + z1) / 2);
+  // viewing direction from the prototype (camera sits up and to the front-right)
+  const dir = (yard ? new THREE.Vector3(3, 9, 11) : new THREE.Vector3(s * 0.35, s * 0.95 + 2.6, s * 0.85 + 2.4)).normalize();
+  const f = dir.clone().negate();
+  const r = new THREE.Vector3().crossVectors(f, UP).normalize();
+  const u = new THREE.Vector3().crossVectors(r, f).normalize();
+  const tanY = Math.tan(THREE.MathUtils.degToRad(fov / 2)),
+    tanX = tanY * (w / h);
+
+  const corners: THREE.Vector3[] = [];
+  for (const x of [x0, x1]) for (const y of [yLo, yHi]) for (const z of [z0, z1]) corners.push(new THREE.Vector3(x, y, z).sub(c));
+  // NDC extent of the room seen from distance d, looking at its centre
+  const extent = (d: number) => {
+    let nx0 = Infinity,
+      nx1 = -Infinity,
+      ny0 = Infinity,
+      ny1 = -Infinity;
+    for (const q of corners) {
+      const depth = d + q.dot(f);
+      const nx = q.dot(r) / (depth * tanX),
+        ny = q.dot(u) / (depth * tanY);
+      nx0 = Math.min(nx0, nx);
+      nx1 = Math.max(nx1, nx);
+      ny0 = Math.min(ny0, ny);
+      ny1 = Math.max(ny1, ny);
+    }
+    return { nx0, nx1, ny0, ny1 };
+  };
+  const R = freeRegion(w, h);
+  const fill = 0.86; // leave a little margin round the room
+  const fits = (d: number) => {
+    const e = extent(d);
+    return e.nx1 - e.nx0 <= (R.x1 - R.x0) * fill && e.ny1 - e.ny0 <= (R.y1 - R.y0) * fill;
+  };
+  let lo = 4,
+    hi = 55;
+  if (fits(lo)) hi = lo;
+  else for (let i = 0; i < 30; i++) {
+    const mid = (lo + hi) / 2;
+    if (fits(mid)) hi = mid;
+    else lo = mid;
   }
-  return { p: t.clone().add(off), t };
+  const d = hi;
+  // shift sideways so the room's centre on screen lands in the centre of the free region
+  const e = extent(d);
+  const dx = (R.x0 + R.x1) / 2 - (e.nx0 + e.nx1) / 2,
+    dy = (R.y0 + R.y1) / 2 - (e.ny0 + e.ny1) / 2;
+  const t = c
+    .clone()
+    .addScaledVector(r, -dx * tanX * d)
+    .addScaledVector(u, -dy * tanY * d);
+  return { t, p: t.clone().addScaledVector(dir, d) };
 }

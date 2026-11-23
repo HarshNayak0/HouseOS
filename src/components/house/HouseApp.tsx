@@ -142,6 +142,9 @@ export function HouseApp() {
             setMode(c.mode);
           }}
           onFps={(fps) => {
+            try {
+              localStorage.setItem("veedu.fps", String(Math.round(fps)));
+            } catch {}
             if (fps < SLOW_FPS && !readViewPref()) setSlowPrompt(true);
           }}
           onError={() => {
