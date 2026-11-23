@@ -38,6 +38,7 @@ export default function SettingsPage() {
               </li>
             ))}
           </ul>
+          <p className="mt-6 text-xs text-ink-2">Version {process.env.NEXT_PUBLIC_BUILD}</p>
         </div>
       </section>
     </main>

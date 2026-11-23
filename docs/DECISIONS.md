@@ -4,6 +4,8 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Camera is aimed at the target on every flight frame (`camera.lookAt`) | drei only runs `OrbitControls.update()` (which aims the camera) while controls are enabled; they are disabled during flights, so the camera slid without turning, then snapped at the end |
+| 2026-11-23 | App version (commit) shown at the bottom of Settings | To confirm a phone is running the latest deploy |
 | 2026-11-23 | Room changes use `history.pushState` and start the camera flight immediately | `router.push` waited for a server request first, so the fly-in started late or looked skipped |
 | 2026-11-23 | Camera flights orbit (interpolate angle/distance round the target) instead of moving in a straight line | After the idle drift, straight-line flights cut across the house at odd angles, especially on phones |
 | 2026-11-23 | Verandah lamp lights fade with the roof | The fittings lift away with the roof; their light stayed and left bright spots on the polished floor |

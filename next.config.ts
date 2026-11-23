@@ -30,6 +30,10 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  env: {
+    // Shown in Settings so we can tell which version a device is running.
+    NEXT_PUBLIC_BUILD: (process.env.VERCEL_GIT_COMMIT_SHA ?? "local").slice(0, 7),
+  },
   turbopack: {
     rules: {
       "*.css": {

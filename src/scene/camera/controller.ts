@@ -107,6 +107,8 @@ export class HouseController {
         this.controls.target.lerpVectors(t0, v.t, k);
         s.set(s0.radius + (s1.radius - s0.radius) * k, s0.phi + (s1.phi - s0.phi) * k, s0.theta + dTheta * k);
         this.camera.position.setFromSpherical(s).add(this.controls.target);
+        // OrbitControls is disabled during the flight, so it won't aim the camera for us.
+        this.camera.lookAt(this.controls.target);
       },
       () => {
         this.controls.enabled = true;
@@ -117,6 +119,7 @@ export class HouseController {
   private jump(v: View) {
     this.camera.position.copy(v.p);
     this.controls.target.copy(v.t);
+    this.camera.lookAt(v.t);
     this.controls.update();
   }
 

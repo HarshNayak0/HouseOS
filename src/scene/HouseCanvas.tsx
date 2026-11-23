@@ -71,6 +71,7 @@ function Scene(props: HouseCanvasProps) {
             stats: model.stats,
             ctrl,
             cam: () => camera.position.toArray().map((v) => +v.toFixed(2)),
+            dir: () => camera.getWorldDirection(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2)),
             info: () => ({ calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures }),
           };
         }
