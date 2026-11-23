@@ -131,39 +131,65 @@ Rules:
   Ignore app buttons, follower/like counts, timestamps and comments unless a comment contains the recipe.
 - If there is no recipe in the input, return an empty title and empty arrays.`;
 
+/** Why Gemini didn't give a recipe, in words the app can show. */
+class GeminiError extends Error {}
+
 async function gemini(text: string, sourceUrl: string | null, images: InlineImage[] = []): Promise<RecipeDraft | null> {
   const key = env("GEMINI_API_KEY");
   if (!key) return null;
-  const model = env("GEMINI_MODEL") || "gemini-2.5-flash";
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(60_000),
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: PROMPT }] },
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: text ? text.slice(0, 20_000) : "Read the recipe from these screenshots." },
-            ...images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } })),
-          ],
-        },
-      ],
-      generationConfig: { responseMimeType: "application/json", responseSchema: GEMINI_SCHEMA, temperature: 0.1 },
-    }),
+  // Google retires model names over time: try the configured one, then the current aliases.
+  const models = [...new Set([env("GEMINI_MODEL"), "gemini-2.5-flash", "gemini-flash-latest"].filter(Boolean))];
+  const body = JSON.stringify({
+    systemInstruction: { parts: [{ text: PROMPT }] },
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { text: text ? text.slice(0, 20_000) : "Read the recipe from these screenshots." },
+          ...images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } })),
+        ],
+      },
+    ],
+    generationConfig: { responseMimeType: "application/json", responseSchema: GEMINI_SCHEMA, temperature: 0.1 },
   });
-  if (!res.ok) {
-    console.error("gemini", res.status, (await res.text()).slice(0, 300));
-    return null;
+  let lastError = "";
+  for (const model of models) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(60_000),
+      body,
+    });
+    if (!res.ok) {
+      const detail = (await res.text()).slice(0, 400);
+      console.error("gemini", model, res.status, detail);
+      if (res.status === 404) {
+        lastError = `model ${model} not found`;
+        continue; // try the next model name
+      }
+      if (res.status === 429) throw new GeminiError("Gemini's free limit is used up for now. Try again in a minute (or tomorrow).");
+      if (res.status === 400 && /API key|API_KEY/i.test(detail)) throw new GeminiError("The Gemini key was refused. Check the GEMINI_API_KEY secret.");
+      if (res.status === 403) throw new GeminiError("The Gemini key isn't allowed to use the API. Check the key's project in Google AI Studio.");
+      throw new GeminiError(`Gemini returned an error (${res.status}). Try again in a moment.`);
+    }
+    const j = await res.json();
+    const cand = j?.candidates?.[0];
+    if (!cand) {
+      const why = j?.promptFeedback?.blockReason;
+      throw new GeminiError(why ? `Gemini declined to read that (${why}).` : "Gemini sent back an empty answer. Try again.");
+    }
+    // join every text part (newer models can split an answer)
+    const out = (cand.content?.parts ?? []).filter((p: { text?: string; thought?: boolean }) => p.text && !p.thought).map((p: { text: string }) => p.text).join("");
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(out.replace(/^```(?:json)?\s*|\s*```$/g, ""));
+    } catch {
+      console.error("gemini unparseable", out.slice(0, 300));
+      throw new GeminiError("Gemini's answer couldn't be read. Try again.");
+    }
+    return normalizeAiDraft(parsed, sourceUrl); // null = it looked but found no recipe
   }
-  const j = await res.json();
-  const out = j?.candidates?.[0]?.content?.parts?.[0]?.text;
-  try {
-    return normalizeAiDraft(JSON.parse(out), sourceUrl);
-  } catch {
-    return null;
-  }
+  throw new GeminiError(`Gemini isn't available right now (${lastError}).`);
 }
 
 async function importRecipe(m: { id: string; household_id: string; user_id: string }, body: Record<string, unknown>) {
@@ -192,11 +218,17 @@ async function importRecipe(m: { id: string; household_id: string; user_id: stri
   let draft: RecipeDraft | null = null;
   if (images.length) {
     await db.from("recipe_import_jobs").update({ status: "structuring" }).eq("id", job!.id);
-    draft = await gemini(caption, sourceUrl, images);
-    if (!draft) return fail(422, "Couldn't read a recipe from those screenshots. Try clearer ones that show the caption or ingredient list.");
+    try {
+      draft = await gemini(caption, sourceUrl, images);
+    } catch (e) {
+      return fail(502, (e as Error).message);
+    }
+    if (!draft)
+      return fail(422, "Gemini looked at the screenshots but didn't find a recipe in them. Make sure the caption (tap “more”) or the ingredient list is visible.");
   } else if (caption) {
     await db.from("recipe_import_jobs").update({ status: "structuring" }).eq("id", job!.id);
-    draft = (await gemini(caption, sourceUrl)) ?? captionByRules(caption, sourceUrl);
+    draft = await gemini(caption, sourceUrl).catch(() => null);
+    draft ??= captionByRules(caption, sourceUrl);
   } else {
     let page;
     try {
@@ -208,7 +240,7 @@ async function importRecipe(m: { id: string; household_id: string; user_id: stri
     draft = extractJsonLdRecipe(html, page.finalUrl);
     if (!draft) {
       await db.from("recipe_import_jobs").update({ status: "structuring" }).eq("id", job!.id);
-      draft = await gemini(htmlToText(html), page.finalUrl);
+      draft = await gemini(htmlToText(html), page.finalUrl).catch(() => null);
       if (draft) {
         const og = html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1];
         if (og && /^https?:\/\//.test(og)) draft.image_url = og;
