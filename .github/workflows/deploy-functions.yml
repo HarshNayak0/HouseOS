@@ -55,4 +55,6 @@ jobs:
         run: supabase functions deploy notify --project-ref "$PROJECT_REF" --no-verify-jwt
       - name: Run it once
         if: steps.gate.outputs.run == 'true'
-        run: curl --fail-with-body -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/notify" -H "Content-Type: application/json" -d '{}'
+        run: |
+          curl --fail-with-body -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/notify" \
+            -H "Content-Type: application/json" -d '{}'
