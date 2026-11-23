@@ -172,4 +172,13 @@ do $$ begin
   assert (select archived_at from public.notes) is not null, 'expired note archived';
 end $$;
 
+-- the notify function's role can read and update what it needs
+set role service_role;
+do $$ begin
+  assert (select count(*) from public.members) = 2, 'service_role reads members';
+  update public.notes set notified_at = now();
+  update public.tasks set reminded_due_at = due_at;
+end $$;
+reset role;
+
 select 'list tests passed' as result;

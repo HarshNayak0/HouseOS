@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Explicit grants for `service_role` on all app tables (+ default privileges) | New Supabase projects don't grant them automatically; the notify function got "permission denied" |
 | 2026-11-24 | Reminders: one `notify` Edge Function, called every 5 min by pg_cron (via pg_net) and right after a note is posted; rules in a pure, unit-tested `logic.ts` | One place for all push; cheap (~9k invocations/month of 500k free) |
 | 2026-11-24 | Each reminder is "claimed" (reminded_due_at / notified_at set with a conditional update) before sending | Overlapping runs can't double-send |
 | 2026-11-24 | Function deployed with no JWT check | It takes no input and only sends what's due, so calling it extra times is harmless; avoids storing a key in the database |
