@@ -40,7 +40,7 @@ jobs:
       - if: steps.gate.outputs.run == 'true'
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          version: 3.3.0
       - name: Set function secrets
         if: steps.gate.outputs.run == 'true'
         run: |
