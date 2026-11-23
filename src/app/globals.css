@@ -42,6 +42,10 @@ body {
   outline: 2px solid var(--color-brass);
   outline-offset: 2px;
 }
+/* Headings that receive focus programmatically (panels) don't need a ring. */
+[tabindex="-1"]:focus {
+  outline: none;
+}
 
 /* Kasavu-style gold band used across the top of every panel */
 .kasavu {

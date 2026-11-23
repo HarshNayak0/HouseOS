@@ -3,6 +3,8 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = Number(process.env.PORT ?? 3000);
 // In the Claude cloud sandbox a matching Chromium lives here; CI installs its own.
 const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
+// Software WebGL so the 3D house renders in headless CI.
+const args = ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"];
 
 export default defineConfig({
   testDir: "tests/e2e",
@@ -13,10 +15,10 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: "off",
-    launchOptions: { executablePath },
+    launchOptions: { executablePath, args },
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"], launchOptions: { executablePath } } },
+    { name: "desktop", use: { ...devices["Desktop Chrome"], launchOptions: { executablePath, args } } },
     {
       name: "mobile-375",
       use: {
@@ -24,7 +26,7 @@ export default defineConfig({
         viewport: { width: 375, height: 740 },
         isMobile: true,
         hasTouch: true,
-        launchOptions: { executablePath },
+        launchOptions: { executablePath, args },
       },
     },
   ],

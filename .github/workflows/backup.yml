@@ -51,7 +51,7 @@ jobs:
           rm -rf dump "veedu-$STAMP.tar.gz"
           echo "STAMP=$STAMP" >> "$GITHUB_ENV"
       - if: steps.gate.outputs.run == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: veedu-backup-${{ env.STAMP }}
           path: veedu-*.tar.gz.gpg

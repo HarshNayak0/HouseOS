@@ -5,7 +5,9 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 - Spec: [`SPEC.md`](SPEC.md) · Plan: [`docs/PLAN.md`](docs/PLAN.md) · Decisions: [`docs/DECISIONS.md`](docs/DECISIONS.md) · Restore a backup: [`docs/RESTORE.md`](docs/RESTORE.md)
 - 3D prototype (source of truth for the house): [`reference/veedu-prototype.html`](reference/veedu-prototype.html)
 
-**Status:** phase 0 (setup) done. Next: phase 1, the 3D house.
+**Live:** https://veeduos.vercel.app
+
+**Status:** phase 1 (3D house shell) done. Rooms open placeholder panels; real features arrive from phase 2.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -102,6 +104,28 @@ reference/      the original 3D prototype
 ```
 
 The full planned structure is in `docs/PLAN.md` §2.
+
+## The 3D house
+
+The house is ported from `reference/veedu-prototype.html` into `src/scene/`:
+
+| Folder | What's in it |
+|---|---|
+| `config.ts` | Room bounds, plinth/wall sizes, room labels (English + Malayalam, editable) |
+| `textures/` | Every texture, drawn in code at load time (no image downloads) |
+| `materials/`, `builder.ts` | Material table and the `box` / `cyl` / `flat` helpers |
+| `house/`, `rooms/`, `props/`, `garden/` | Walls, roof, floors, furniture, palms, pond, well |
+| `indicators/` | Fridge badge, laundry heap, nilavilakku, boat lantern, closet bell, petti glow |
+| `lighting/` | Sun, sky, day ↔ evening |
+| `camera/` | Views, camera flights, tap picking, labels (`controller.ts`) |
+| `merge.ts` | Merges static meshes per material to cut draw calls |
+| `HouseCanvas.tsx` | The React Three Fiber canvas, loaded lazily |
+
+Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `/closet`, `/backyard` open the house inside with that room's panel. `/settings` has the 3D / 2D choice.
+
+**2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
+
+**Performance check:** add `?debug=1` to the URL, then run `__veedu.info()` in the browser console for draw calls and triangles.
 
 ## Time zones
 

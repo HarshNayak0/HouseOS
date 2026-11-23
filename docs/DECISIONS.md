@@ -4,6 +4,16 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Phase 1: scene ported as typed builder modules hosted in R3F (`<Canvas>` + drei `OrbitControls`), not rewritten as JSX meshes | Keeps every coordinate, texture and RNG call identical to the prototype ("port, don't redesign") |
+| 2026-11-23 | Static geometry merged per material at load (734 meshes → 64) instead of hand-instancing | Same draw-call saving as instancing with far less code; animated/pickable objects stay separate |
+| 2026-11-23 | Colour management off (`<Canvas legacy>`) and light intensities × π | Reproduces the r128 prototype's look on three.js r187 |
+| 2026-11-23 | `PCFShadowMap` instead of `PCFSoftShadowMap` | `PCFSoftShadowMap` was removed in recent three.js; shadows are slightly softer-edged than the prototype |
+| 2026-11-23 | Next.js `cacheComponents` turned off | Needed for `dynamicParams = false` so unknown rooms return a real 404; the app is client-rendered anyway |
+| 2026-11-23 | Panel slide uses a 220 ms CSS transition; Framer Motion deferred until list animations (phase 3) | Spec asks 150–250 ms; avoids shipping a library for one transition |
+| 2026-11-23 | 3D/2D choice stored per device (localStorage) until settings move to the database in phase 2 | No backend yet |
+| 2026-11-23 | Boat lantern stays unlit (and its light off) until a trip is within 30 days | SPEC §3.3; the prototype lit it always |
+| 2026-11-23 | New indicators: brass bell at the closet doorway, warm glow over the bedroom petti | SPEC §3.3 additions |
+| 2026-11-23 | GitHub Actions bumped to checkout v7, setup-node v7, cache v6, upload-artifact v7 | v4 ran on deprecated Node 20 |
 | 2026-11-23 | Host on Vercel Hobby (compared with Cloudflare Pages + Supabase Edge Functions, Netlify, Render, Oracle, Cloud Run) | Least work, Next.js runs as specced, per-branch previews; personal-use limit fits a two-person app. Cloudflare was the runner-up if we ever need to leave |
 | 2026-11-23 | Security headers (CSP, HSTS, nosniff, frame-deny) set in `next.config.ts`; CSP allows `'unsafe-inline'` scripts for now | Next.js hydration needs it without nonces; tighten with nonces in phase 8 |
 | 2026-11-23 | Keep-alive calls a tiny `public.ping()` SQL function, not just the REST root | Supabase pausing is based on database activity, so the ping must run a query |

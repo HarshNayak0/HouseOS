@@ -1,13 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-test("home page shows the Veedu card", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: /Veedu/ })).toBeVisible();
-  await expect(page.getByText("വീട്").first()).toBeVisible();
-});
-
 test("no horizontal scroll at this viewport", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/settings");
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
   );
@@ -23,4 +17,9 @@ test("security headers are set", async ({ request }) => {
 test("health endpoint responds", async ({ request }) => {
   const res = await request.get("/api/health");
   expect(await res.json()).toEqual({ ok: true, app: "veedu" });
+});
+
+test("unknown rooms are a 404", async ({ request }) => {
+  expect((await request.get("/garage")).status()).toBe(404);
+  expect((await request.get("/kitchen/extra")).status()).toBe(404);
 });
