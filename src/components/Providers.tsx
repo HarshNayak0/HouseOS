@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useHouseholdRealtime } from "@/lib/household";
 import { useListsRealtime } from "@/lib/lists/rows";
+import { useSyncOnOpen } from "@/lib/calendar";
 import { Toaster } from "@/panels/ui";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -27,5 +28,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
 function Realtime() {
   useHouseholdRealtime();
   useListsRealtime();
+  useSyncOnOpen();
   return null;
 }

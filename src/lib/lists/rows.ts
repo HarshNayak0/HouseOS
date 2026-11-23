@@ -13,7 +13,20 @@ import { authEnabled } from "@/lib/supabase/config";
 import { markPartnerEdit } from "./presence";
 import { toast } from "./toast";
 
-export type ListTable = "shopping_items" | "item_frequency" | "tasks" | "subtasks" | "chores" | "chore_completions" | "notes" | "activity_log";
+export type ListTable =
+  | "shopping_items"
+  | "item_frequency"
+  | "tasks"
+  | "subtasks"
+  | "chores"
+  | "chore_completions"
+  | "notes"
+  | "activity_log"
+  | "calendar_accounts"
+  | "calendar_sources"
+  | "calendar_event_cache"
+  | "milestones"
+  | "gift_ideas";
 export const rowsKey = (t: ListTable) => ["rows", t] as const;
 
 export interface BaseRow {
@@ -31,6 +44,15 @@ const ORDER: Partial<Record<ListTable, { column: string; ascending: boolean; lim
   notes: { column: "created_at", ascending: false },
   activity_log: { column: "created_at", ascending: false, limit: 50 },
   item_frequency: { column: "times_added", ascending: false, limit: 300 },
+  calendar_event_cache: { column: "starts_at", ascending: true, limit: 3000 },
+  milestones: { column: "base_date", ascending: true },
+};
+
+/** Tables whose secret columns the app may not read. */
+const SELECT: Partial<Record<ListTable, string>> = {
+  calendar_accounts: "id, household_id, member_id, google_email, status, last_error, created_at, updated_at, deleted_at",
+  calendar_sources:
+    "id, household_id, account_id, member_id, google_calendar_id, summary, color, access_role, is_primary, is_us_calendar, visible, last_synced_at, created_at, updated_at, deleted_at",
 };
 
 export function useRows<T extends object>(table: ListTable) {
@@ -42,11 +64,11 @@ export function useRows<T extends object>(table: ListTable) {
     queryFn: async () => {
       const sb = supabaseBrowser()!;
       const o = ORDER[table] ?? { column: "created_at", ascending: true };
-      let q = sb.from(table).select("*").order(o.column, { ascending: o.ascending });
+      let q = sb.from(table).select(SELECT[table] ?? "*").order(o.column, { ascending: o.ascending });
       if (o.limit) q = q.limit(o.limit);
       const { data, error } = await q;
       if (error) throw error;
-      return data as T[];
+      return data as unknown as T[];
     },
   });
 }
@@ -109,7 +131,20 @@ export function useRowMutation<T extends { id: string }>(table: ListTable) {
   };
 }
 
-const LIVE_TABLES: ListTable[] = ["shopping_items", "tasks", "subtasks", "chores", "chore_completions", "notes", "activity_log"];
+const LIVE_TABLES: ListTable[] = [
+  "shopping_items",
+  "tasks",
+  "subtasks",
+  "chores",
+  "chore_completions",
+  "notes",
+  "activity_log",
+  "calendar_accounts",
+  "calendar_sources",
+  "calendar_event_cache",
+  "milestones",
+  "gift_ideas",
+];
 
 /**
  * One Realtime channel for every list (mounted once, in <Providers>). Changes from the other

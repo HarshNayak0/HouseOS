@@ -4,7 +4,7 @@
 // Deployed by .github/workflows/deploy-functions.yml (no JWT check; it takes no input).
 import { createClient } from "npm:@supabase/supabase-js@2.119.2";
 import webpush from "npm:web-push@3.6.7";
-import { planReminders, type Chore, type Member, type Note, type Prefs, type Task } from "./logic.ts";
+import { planReminders, type Chore, type Member, type Milestone, type Note, type Prefs, type Task } from "./logic.ts";
 
 const env = (k: string) => Deno.env.get(k) ?? "";
 
@@ -34,14 +34,16 @@ Deno.serve(async () => {
   const db = createClient(env("SUPABASE_URL"), key, { auth: { persistSession: false } });
 
   const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
-  const [members, prefs, chores, tasks, notes, subs] = await Promise.all([
+  const [members, prefs, chores, tasks, notes, subs, milestones] = await Promise.all([
     db.from("members").select("id, user_id, display_name, household_id").is("deleted_at", null),
     db.from("notification_prefs").select("member_id, enabled, quiet_start, quiet_end, kinds"),
     db.from("chores").select("id, household_id, title, next_due_at, assignee_id, remind, paused, deleted_at, reminded_due_at").is("deleted_at", null).lte("next_due_at", new Date().toISOString()).gte("next_due_at", since),
     db.from("tasks").select("id, household_id, title, due_at, due_has_time, assignee_id, visibility, created_by, completed_at, deleted_at, reminded_due_at").is("deleted_at", null).is("completed_at", null).not("due_at", "is", null).gte("due_at", since),
     db.from("notes").select("id, household_id, body, created_by, created_at, deleted_at, archived_at, notified_at").is("notified_at", null).gte("created_at", since),
     db.from("push_subscriptions").select("id, member_id, endpoint, p256dh, auth").is("deleted_at", null),
+    db.from("milestones").select("id, household_id, title, kind, base_date, person_id, remind_days, reminded, deleted_at").is("deleted_at", null),
   ]);
+  // (milestones is optional so reminders keep working even before its migration has run)
   const err = [members, prefs, chores, tasks, notes, subs].find((r) => r.error)?.error;
   if (err) return Response.json({ error: err.message }, { status: 500 });
 
@@ -52,6 +54,7 @@ Deno.serve(async () => {
     chores: chores.data as Chore[],
     tasks: tasks.data as Task[],
     notes: notes.data as Note[],
+    milestones: (milestones.error ? [] : milestones.data) as Milestone[],
   });
 
   let sent = 0,
@@ -62,7 +65,9 @@ Deno.serve(async () => {
     const claimed =
       c.table === "notes"
         ? await db.from("notes").update({ notified_at: new Date().toISOString() }).eq("id", c.id).is("notified_at", null).select("id")
-        : await db.from(c.table).update({ reminded_due_at: c.due }).eq("id", c.id).or(`reminded_due_at.is.null,reminded_due_at.neq.${c.due}`).select("id");
+        : c.table === "milestones"
+          ? await db.from("milestones").update({ reminded: [...c.reminded.slice(-20), c.key] }).eq("id", c.id).not("reminded", "cs", `{${c.key}}`).select("id")
+          : await db.from(c.table).update({ reminded_due_at: c.due }).eq("id", c.id).or(`reminded_due_at.is.null,reminded_due_at.neq.${c.due}`).select("id");
     if (claimed.error || !claimed.data?.length) {
       skipped++;
       continue;

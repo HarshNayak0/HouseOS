@@ -6,11 +6,7 @@ import { MotionSetting, ViewSetting } from "./SettingsView";
 
 export const metadata: Metadata = { title: "Settings · Veedu" };
 
-const LATER = [
-  ["Connected Google calendars", 4],
-  ["Milestones", 4],
-  ["Evening mode: automatic at Toronto sunset", 8],
-] as const;
+const LATER = [["Evening mode: automatic at Toronto sunset", 8]] as const;
 
 export default function SettingsPage() {
   return (

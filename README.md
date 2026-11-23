@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 3 done, including push reminders (3b). Next: phase 4, Google Calendar.
+**Status:** phase 4 (Google Calendar, milestones) built. Next: phase 5, the dashboard.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -67,6 +67,8 @@ See [`.env.example`](.env.example) for the full list and which phase needs each 
 | `BACKUP_PASSPHRASE` | backup | A long random passphrase you also save in your password manager |
 | `SUPABASE_ACCESS_TOKEN` | deploy functions | Supabase → your avatar → Account preferences → Access Tokens → Generate new token |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | deploy functions | The same values as in Vercel (`VAPID_PUBLIC_KEY` = `NEXT_PUBLIC_VAPID_PUBLIC_KEY`) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | deploy functions | Google Cloud → Google Auth Platform → Clients → your web client |
+| `TOKEN_ENCRYPTION_KEY` | deploy functions | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts Google refresh tokens. |
 
 Until these exist, the keep-alive and backup workflows run but skip themselves with a notice.
 
@@ -141,6 +143,18 @@ Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `
 **2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
 
 **Performance check:** add `?debug=1` to the URL, then run `__veedu.info()` in the browser console for draw calls and triangles.
+
+## Google Calendar
+
+`supabase/functions/calendar` handles everything that touches Google, so the Google secrets live only in Supabase:
+
+- **Connect:** Settings → Calendars → Connect. It uses the `calendar` scope with offline access. The refresh token is encrypted with AES-256-GCM (`TOKEN_ENCRYPTION_KEY`) and the app can never read it (no column grant).
+- **Sync:** incremental, using Google's `syncToken`, with a full re-check weekly. `pg_cron` runs it every 15 minutes, and the app asks for a sync when it opens. Events are cached in `calendar_event_cache` and reach both phones through Realtime.
+- **Two-way:** events added or deleted in the Office panel are written to Google straight away (to your calendar, Prerna's, or "Us").
+- **"Us" calendar:** created in the account of whoever presses the button and shared with the other person as an editor.
+- **Milestones:** yearly, editable in Settings. The four from the spec are filled in automatically. Reminders go out 14, 7 and 1 days before at 9 am, sent by `notify`; birthday reminders only go to the other person. Gift ideas are hidden from the person they're for (RLS).
+
+Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, and this redirect URI on the web client: `https://<project-ref>.supabase.co/functions/v1/calendar/callback`.
 
 ## Reminders (push)
 

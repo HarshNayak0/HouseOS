@@ -129,3 +129,45 @@ describe("Toronto time", () => {
     expect(at("2026-12-01", 9).toISOString()).toBe("2026-12-01T14:00:00.000Z");
   });
 });
+
+import { milestoneLabel, nextMilestone, type Milestone } from "../../supabase/functions/notify/logic";
+
+describe("milestones", () => {
+  const ms = (o: Partial<Milestone> = {}): Milestone => ({
+    id: "m1",
+    household_id: H,
+    title: "Prerna's birthday",
+    kind: "birthday",
+    base_date: "2001-09-01",
+    person_id: "prerna",
+    remind_days: [14, 7, 1],
+    reminded: [],
+    deleted_at: null,
+    ...o,
+  });
+  it("finds the next occurrence and age", () => {
+    expect(nextMilestone("2001-09-01", "2026-08-18")).toEqual({ date: "2026-09-01", years: 25, daysAway: 14 });
+    expect(nextMilestone("2001-09-01", "2026-09-02")).toEqual({ date: "2027-09-01", years: 26, daysAway: 364 });
+    expect(nextMilestone("2025-10-18", "2026-10-18").daysAway).toBe(0);
+  });
+  it("labels birthdays and anniversaries", () => {
+    expect(milestoneLabel("birthday", 26)).toBe("turning 26");
+    expect(milestoneLabel("anniversary", 2)).toBe("2nd anniversary");
+    expect(milestoneLabel("anniversary", 11)).toBe("11th anniversary");
+  });
+  it("reminds 14 days before at 9 am, only the other person for a birthday", () => {
+    expect(run(at("2026-08-18", 8, 30), { milestones: [ms()] })).toHaveLength(0);
+    const p = run(at("2026-08-18", 9, 5), { milestones: [ms()] });
+    expect(p[0].messages.map((m) => m.memberId)).toEqual(["harsh"]);
+    expect(p[0].messages[0]).toMatchObject({ title: "Prerna's birthday in 14 days", body: "Turning 25 · plan something 🎁" });
+  });
+  it("anniversaries remind both of you, once per reminder day", () => {
+    const a = ms({ title: "Relationship anniversary", kind: "anniversary", base_date: "2025-10-18", person_id: null });
+    expect(run(at("2026-10-17", 9, 5), { milestones: [a] })[0].messages).toHaveLength(2);
+    expect(run(at("2026-10-17", 9, 5), { milestones: [{ ...a, reminded: ["2026-10-18:1"] }] })).toHaveLength(0);
+    expect(run(at("2026-10-17", 9, 5), { milestones: [a] })[0].messages[0].title).toBe("Relationship anniversary tomorrow");
+  });
+  it("is quiet on other days", () => {
+    expect(run(at("2026-08-20", 10), { milestones: [ms()] })).toHaveLength(0);
+  });
+});

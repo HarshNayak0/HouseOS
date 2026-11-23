@@ -25,6 +25,9 @@ jobs:
       VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
     steps:
       - name: Skip until the access token exists
         id: gate
@@ -47,14 +50,25 @@ jobs:
           if [ -z "$VAPID_PUBLIC_KEY" ] || [ -z "$VAPID_PRIVATE_KEY" ] || [ -z "$VAPID_SUBJECT" ]; then
             echo "::error::Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT as GitHub secrets"; exit 1
           fi
-          supabase secrets set --yes --project-ref "$PROJECT_REF" \
-            VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="$VAPID_SUBJECT"
-      - name: Deploy notify
+          args=(VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="$VAPID_SUBJECT" APP_URL="https://veeduos.vercel.app")
+          if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ] && [ -n "$TOKEN_ENCRYPTION_KEY" ]; then
+            args+=(GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" TOKEN_ENCRYPTION_KEY="$TOKEN_ENCRYPTION_KEY")
+          else
+            echo "::notice::Google Calendar secrets not set yet — the calendar function will say it isn't set up."
+          fi
+          supabase secrets set --yes --project-ref "$PROJECT_REF" "${args[@]}"
+      - name: Deploy functions
         if: steps.gate.outputs.run == 'true'
-        # no JWT check: the function takes no input and is safe to call any time
-        run: supabase functions deploy notify --yes --project-ref "$PROJECT_REF" --no-verify-jwt
-      - name: Run it once
+        # no JWT check: notify takes no input; calendar checks the caller's session itself where needed
+        run: |
+          for fn in notify calendar; do
+            supabase functions deploy "$fn" --yes --project-ref "$PROJECT_REF" --no-verify-jwt
+          done
+      - name: Run once
         if: steps.gate.outputs.run == 'true'
         run: |
           curl --fail-with-body -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/notify" \
+            -H "Content-Type: application/json" -d '{}'
+          echo
+          curl -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/calendar/sync" \
             -H "Content-Type: application/json" -d '{}'

@@ -53,7 +53,19 @@ export interface Note {
   notified_at: string | null;
 }
 
-export type Kind = "chores" | "tasks" | "notes";
+export interface Milestone {
+  id: string;
+  household_id: string;
+  title: string;
+  kind: "birthday" | "anniversary" | "other";
+  base_date: string; // YYYY-MM-DD
+  person_id: string | null;
+  remind_days: number[];
+  reminded: string[];
+  deleted_at: string | null;
+}
+
+export type Kind = "chores" | "tasks" | "notes" | "milestones";
 export interface Message {
   memberId: string;
   kind: Kind;
@@ -63,7 +75,10 @@ export interface Message {
   tag: string;
 }
 /** A row to mark as handled (claimed) before its messages are sent. */
-export type Claim = { table: "chores" | "tasks"; id: string; due: string } | { table: "notes"; id: string };
+export type Claim =
+  | { table: "chores" | "tasks"; id: string; due: string }
+  | { table: "notes"; id: string }
+  | { table: "milestones"; id: string; key: string; reminded: string[] };
 export interface Plan {
   claim: Claim;
   messages: Message[];
@@ -113,6 +128,29 @@ export interface Input {
   chores: Chore[];
   tasks: Task[];
   notes: Note[];
+  milestones?: Milestone[];
+}
+
+/** Next yearly occurrence (Toronto day, on or after `today`) and how many years it marks. */
+export function nextMilestone(base: string, today: string): { date: string; years: number; daysAway: number } {
+  const [by, bm, bd] = base.split("-").map(Number);
+  const [ty] = today.split("-").map(Number);
+  const mmdd = `${String(bm).padStart(2, "0")}-${String(bd === 29 && bm === 2 ? 28 : bd).padStart(2, "0")}`;
+  let year = ty;
+  if (`${year}-${mmdd}` < today) year++;
+  const date = `${year}-${mmdd}`;
+  const daysAway = Math.round((Date.parse(date + "T12:00:00Z") - Date.parse(today + "T12:00:00Z")) / 86_400_000);
+  return { date, years: year - by, daysAway };
+}
+
+const ordinal = (n: number) => n + (["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0] ?? "th");
+
+/** "turning 26" / "2nd anniversary" / "" */
+export function milestoneLabel(kind: Milestone["kind"], years: number): string {
+  if (years <= 0) return "";
+  if (kind === "birthday") return `turning ${years}`;
+  if (kind === "anniversary") return `${ordinal(years)} anniversary`;
+  return `${years} year${years > 1 ? "s" : ""}`;
 }
 
 /**
@@ -132,8 +170,8 @@ function deliverable(ids: string[], kind: Kind, prefs: Prefs[], hhmm: string): s
 
 const MAX_LATE_MS = 2 * 86_400_000; // don't send reminders for things more than 2 days stale
 
-export function planReminders({ now, members, prefs, chores, tasks, notes }: Input): Plan[] {
-  const { hhmm } = parts(now);
+export function planReminders({ now, members, prefs, chores, tasks, notes, milestones = [] }: Input): Plan[] {
+  const { hhmm, day: today } = parts(now);
   const plans: Plan[] = [];
   const everyone = (household: string) => members.filter((m) => m.household_id === household).map((m) => m.id);
   const memberOfUser = (uid: string | null) => members.find((m) => m.user_id === uid);
@@ -190,6 +228,32 @@ export function planReminders({ now, members, prefs, chores, tasks, notes }: Inp
         tag: `note-${n.id}`,
       })),
     });
+  }
+  // milestones: 14 / 7 / 1 days before, from 9 am Toronto. Birthdays go only to the other person.
+  if (hhmm >= "09:00") {
+    for (const ms of milestones) {
+      if (ms.deleted_at) continue;
+      const next = nextMilestone(ms.base_date, today);
+      if (!ms.remind_days.includes(next.daysAway)) continue;
+      const key = `${next.date}:${next.daysAway}`;
+      if (ms.reminded.includes(key)) continue;
+      const ids = everyone(ms.household_id).filter((id) => !(ms.kind === "birthday" && id === ms.person_id));
+      const to = deliverable(ids, "milestones", prefs, hhmm);
+      if (!to) continue;
+      const label = milestoneLabel(ms.kind, next.years);
+      const when = next.daysAway === 1 ? "tomorrow" : `in ${next.daysAway} days`;
+      plans.push({
+        claim: { table: "milestones", id: ms.id, key, reminded: ms.reminded },
+        messages: to.map((memberId) => ({
+          memberId,
+          kind: "milestones",
+          title: `${ms.title} ${when}`,
+          body: label ? `${label[0].toUpperCase()}${label.slice(1)} · plan something 🎁` : "Plan something 🎁",
+          url: "/office",
+          tag: `milestone-${ms.id}-${next.daysAway}`,
+        })),
+      });
+    }
   }
   return plans;
 }

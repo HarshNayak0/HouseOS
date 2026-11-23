@@ -4,6 +4,14 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | All Google Calendar work runs in one Supabase Edge Function (`calendar`): OAuth start/callback, sync, event writes, the Us calendar | Google client secret and the token key never touch Vercel or the browser |
+| 2026-11-24 | Scope `https://www.googleapis.com/auth/calendar` | One scope covers reading both calendars, writing events, and creating/sharing the Us calendar; fine for an unverified personal app (<100 users) |
+| 2026-11-24 | Refresh tokens: AES-256-GCM, random IV, key only in function secrets; column not granted to the app | SPEC: encrypted at rest; a DB leak alone can't use them |
+| 2026-11-24 | OAuth `state` is HMAC-signed (member id + 10 min expiry + safe return path) | Prevents connecting a Google account to someone else's member |
+| 2026-11-24 | Sync: Google syncToken incremental, full re-check every 7 days (−60 to +400 days, single events), 410 → restart | Cheap and correct; long-running recurring series still appear |
+| 2026-11-24 | Gift ideas default to "for the other person" and are hidden from them by RLS | Surprises stay surprises |
+| 2026-11-24 | Milestones seeded by SQL for existing and new households; partner's birthday is linked when they join | SPEC seeds; no manual setup |
+| 2026-11-24 | September planner covers Sep 1 – Oct 18 | All four milestones fall in that stretch |
 | 2026-11-24 | Explicit grants for `service_role` on all app tables (+ default privileges) | New Supabase projects don't grant them automatically; the notify function got "permission denied" |
 | 2026-11-24 | Reminders: one `notify` Edge Function, called every 5 min by pg_cron (via pg_net) and right after a note is posted; rules in a pure, unit-tested `logic.ts` | One place for all push; cheap (~9k invocations/month of 500k free) |
 | 2026-11-24 | Each reminder is "claimed" (reminded_due_at / notified_at set with a conditional update) before sending | Overlapping runs can't double-send |

@@ -1,7 +1,9 @@
 "use client";
 
 import type { RoomId } from "@/scene/config";
+import { CalendarView } from "./Calendar";
 import { Chores } from "./Chores";
+import { Milestones } from "./Milestones";
 import { NotesBoard } from "./Notes";
 import { ShoppingList } from "./ShoppingList";
 import { Tasks } from "./Tasks";
@@ -26,8 +28,9 @@ export function RoomContent({ room }: { room: RoomId }) {
     case "office":
       return (
         <>
+          <CalendarView />
           <Tasks />
-          <Later>Google Calendar, milestones and the September planner arrive in phase 4.</Later>
+          <Milestones />
         </>
       );
     case "wash":

@@ -13,6 +13,7 @@ import { householdKey, useHousehold, type Member } from "@/lib/household";
 import { memberProfileSchema, quietHoursSchema, roomLabelsSchema } from "@/lib/schemas";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { DEFAULT_LABELS, ROOM_IDS, type RoomId } from "@/scene/config";
+import { CalendarSettings, MilestoneSettings } from "./CalendarSettings";
 
 export function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -50,6 +51,8 @@ export function AccountSettings() {
       <Profile me={data.me} partner={data.partner} />
       <Household householdId={data.me.household_id} partner={data.partner} bothColor={data.settings?.both_color ?? "leaf"} />
       <Notifications me={data.me} />
+      <CalendarSettings />
+      <MilestoneSettings />
       <RoomLabels householdId={data.me.household_id} current={data.settings?.room_labels ?? {}} />
       <Section title="Your data">
         <a href="/api/export" download className={btnSecondary}>
@@ -179,6 +182,7 @@ const KINDS: [string, string][] = [
   ["notes", "New notes from your partner"],
   ["chores", "Chores when they're due"],
   ["tasks", "Tasks when they're due"],
+  ["milestones", "Birthdays and anniversaries coming up"],
 ];
 
 function Notifications({ me }: { me: Member }) {

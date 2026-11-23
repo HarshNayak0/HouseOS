@@ -15,6 +15,11 @@ const TABLES = [
   "chores",
   "chore_completions",
   "notes",
+  "calendar_accounts",
+  "calendar_sources",
+  "calendar_event_cache",
+  "milestones",
+  "gift_ideas",
 ] as const;
 
 /** Downloads everything the signed-in person can see (RLS applies) as one JSON file. */
@@ -26,7 +31,12 @@ export async function GET() {
 
   const out: Record<string, unknown> = { exported_at: new Date().toISOString(), app: "veedu", version: 1 };
   for (const t of TABLES) {
-    const { data, error } = await sb.from(t).select(t === "invites" ? "id, household_id, expires_at, used_at, created_at" : "*");
+    const cols: Partial<Record<string, string>> = {
+      invites: "id, household_id, expires_at, used_at, created_at",
+      calendar_accounts: "id, household_id, member_id, google_email, status, created_at",
+      calendar_sources: "id, household_id, member_id, google_calendar_id, summary, is_primary, is_us_calendar, visible",
+    };
+    const { data, error } = await sb.from(t).select(cols[t] ?? "*");
     if (error) return Response.json({ error: `Couldn't read ${t}` }, { status: 500 });
     out[t] = data;
   }
