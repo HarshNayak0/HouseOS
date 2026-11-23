@@ -2,6 +2,7 @@
 //   POST /recipes/import  (signed in) { url } or { caption, source_url? } → { job_id, draft }
 //   POST /recipes/image   (signed in) { url } → { mime, data } (base64), so the app can compress and store it
 // Websites: schema.org JSON-LD first (no AI); Gemini only as a fallback. Captions: Gemini (rules if unavailable).
+// Screenshots (up to 4): read by Gemini; they're not stored.
 // Only recipe content is ever sent to Gemini. Limits: 20 imports a day, 60 a month per household.
 import { createClient } from "npm:@supabase/supabase-js@2.119.2";
 import {
@@ -11,6 +12,8 @@ import {
   isInstagram,
   isSafePublicUrl,
   normalizeAiDraft,
+  validateScreenshots,
+  type InlineImage,
   type RecipeDraft,
 } from "../_shared/recipe.ts";
 
@@ -124,19 +127,29 @@ Rules:
 - Steps: clear, in order, one or two sentences each. Drop hashtags, emojis-only lines, and "follow/like/save" calls to action.
 - tags: up to 5 short words (cuisine, meal, diet). creator: an @handle or name if the text credits one.
 - confidence (0–1) per field: how sure you are it's stated correctly in the text.
-- If there is no recipe in the text, return an empty title and empty arrays.`;
+- The input may be screenshots of a social media post or video: read the caption and any recipe text shown on screen.
+  Ignore app buttons, follower/like counts, timestamps and comments unless a comment contains the recipe.
+- If there is no recipe in the input, return an empty title and empty arrays.`;
 
-async function gemini(text: string, sourceUrl: string | null): Promise<RecipeDraft | null> {
+async function gemini(text: string, sourceUrl: string | null, images: InlineImage[] = []): Promise<RecipeDraft | null> {
   const key = env("GEMINI_API_KEY");
   if (!key) return null;
   const model = env("GEMINI_MODEL") || "gemini-2.5-flash";
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    signal: AbortSignal.timeout(40_000),
+    signal: AbortSignal.timeout(60_000),
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: PROMPT }] },
-      contents: [{ role: "user", parts: [{ text: text.slice(0, 20_000) }] }],
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: text ? text.slice(0, 20_000) : "Read the recipe from these screenshots." },
+            ...images.map((i) => ({ inline_data: { mime_type: i.mime, data: i.data } })),
+          ],
+        },
+      ],
       generationConfig: { responseMimeType: "application/json", responseSchema: GEMINI_SCHEMA, temperature: 0.1 },
     }),
   });
@@ -157,14 +170,18 @@ async function importRecipe(m: { id: string; household_id: string; user_id: stri
   const url = typeof body.url === "string" ? body.url.trim() : "";
   const caption = typeof body.caption === "string" ? body.caption.trim().slice(0, 10_000) : "";
   const sourceUrl = typeof body.source_url === "string" && /^https?:\/\//.test(body.source_url) ? body.source_url.slice(0, 500) : url || null;
-  if (!url && !caption) throw new HttpError(400, "Paste a link or the recipe text");
-  if (url && !caption && isInstagram(url)) throw new HttpError(400, "Instagram links can't be read. Copy the post's caption and paste it instead.");
+  const images = validateScreenshots(body.images);
+  if (typeof images === "string") throw new HttpError(400, images);
+  if (!url && !caption && !images.length) throw new HttpError(400, "Paste a link or the recipe text, or add screenshots");
+  if (images.length && !env("GEMINI_API_KEY")) throw new HttpError(503, "Reading screenshots needs the Gemini key to be set up");
+  if (url && !caption && !images.length && isInstagram(url))
+    throw new HttpError(400, "Instagram links can't be read. Add screenshots of the post, or paste its caption.");
   if (url && !isSafePublicUrl(url)) throw new HttpError(400, "That doesn't look like a public web link");
   await checkLimits(m.household_id);
 
   const { data: job } = await db
     .from("recipe_import_jobs")
-    .insert({ household_id: m.household_id, kind: caption ? "caption" : "url", source_url: sourceUrl, status: "reading", created_by: m.user_id })
+    .insert({ household_id: m.household_id, kind: images.length ? "screenshots" : caption ? "caption" : "url", source_url: sourceUrl, status: "reading", created_by: m.user_id })
     .select("id")
     .single();
   const fail = async (status: number, msg: string): Promise<never> => {
@@ -173,7 +190,11 @@ async function importRecipe(m: { id: string; household_id: string; user_id: stri
   };
 
   let draft: RecipeDraft | null = null;
-  if (caption) {
+  if (images.length) {
+    await db.from("recipe_import_jobs").update({ status: "structuring" }).eq("id", job!.id);
+    draft = await gemini(caption, sourceUrl, images);
+    if (!draft) return fail(422, "Couldn't read a recipe from those screenshots. Try clearer ones that show the caption or ingredient list.");
+  } else if (caption) {
     await db.from("recipe_import_jobs").update({ status: "structuring" }).eq("id", job!.id);
     draft = (await gemini(caption, sourceUrl)) ?? captionByRules(caption, sourceUrl);
   } else {

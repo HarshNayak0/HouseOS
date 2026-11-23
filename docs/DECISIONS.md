@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Screenshot import (≤4 images, compressed on the phone, read by Gemini, not stored) | Harsh can't copy captions in the Instagram app; screenshots also catch on-screen ingredient lists. Same free key, still no downloading from Instagram |
 | 2026-11-24 | Recipe imports: no video upload, no Groq; Gemini (free tier) for pasted captions and for websites without JSON-LD; JSON-LD first, no AI | Harsh's choice; fewest keys, still $0; no GitHub media worker needed |
 | 2026-11-24 | Imports run synchronously in a `recipes` Edge Function; `recipe_import_jobs` logs each one (rate limit 20/day, 60/month; kept 60 days) | Seconds, not minutes, without video; the log enforces the limit |
 | 2026-11-24 | AI answers are validated and cleaned (`normalizeAiDraft`): missing amounts stay null and are flagged | SPEC: never invent quantities |

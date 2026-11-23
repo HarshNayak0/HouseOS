@@ -163,6 +163,7 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
 - **Imports** (`supabase/functions/recipes`):
   - Website links use the page's schema.org JSON-LD first, with no AI. Gemini is the fallback.
   - Pasted Instagram captions go to Gemini, or to the rule-based reader if no key is set.
+  - Up to 4 screenshots of a post (caption or on-screen ingredients) are read by Gemini. They're shrunk on the phone, and not stored unless you choose one as the recipe photo.
   - Gemini never invents amounts: missing ones stay blank, and the review screen highlights anything uncertain before you save.
   - The limit is 20 imports a day and 60 a month.
   - Instagram is never downloaded from. Paste the caption; the link is kept as the source.

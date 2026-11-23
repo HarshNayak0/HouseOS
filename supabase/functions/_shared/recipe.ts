@@ -326,3 +326,26 @@ export function isSafePublicUrl(raw: string): boolean {
   if (!h.includes(".")) return false;
   return true;
 }
+
+export interface InlineImage {
+  mime: string;
+  data: string; // base64
+}
+const IMAGE_MIMES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+
+/** Check uploaded screenshots: at most 4, real image types, each ≤ 1.5 MB. Returns the images or an error message. */
+export function validateScreenshots(raw: unknown): InlineImage[] | string {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) return "Bad screenshots";
+  if (raw.length > 4) return "Up to 4 screenshots at a time";
+  const out: InlineImage[] = [];
+  for (const x of raw) {
+    if (!x || typeof x !== "object") return "Bad screenshot";
+    const { mime, data } = x as Record<string, unknown>;
+    if (typeof mime !== "string" || !IMAGE_MIMES.includes(mime)) return "Screenshots must be images";
+    if (typeof data !== "string" || !/^[A-Za-z0-9+/]+={0,2}$/.test(data)) return "Bad screenshot data";
+    if ((data.length * 3) / 4 > 1_500_000) return "A screenshot is too large";
+    out.push({ mime, data });
+  }
+  return out;
+}

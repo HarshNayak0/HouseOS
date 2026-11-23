@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { formatQty, isInstagram, scaleQty } from "../../supabase/functions/_shared/recipe";
+import { compressToWebp } from "@/lib/image";
 import { live, rowsKey, useRowMutation, useRows } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -24,7 +25,11 @@ import {
 import type { ShoppingItem } from "./ShoppingList";
 import { EmptyState, IconButton, Sec, TrashIcon, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
-type View = { mode: "list" } | { mode: "detail"; id: string } | { mode: "edit"; id?: string; draft?: RecipeDraft; jobId?: string } | { mode: "import"; text?: string };
+type View =
+  | { mode: "list" }
+  | { mode: "detail"; id: string }
+  | { mode: "edit"; id?: string; draft?: RecipeDraft; jobId?: string; photo?: Blob }
+  | { mode: "import"; text?: string };
 
 /** The kitchen's recipe box (list → recipe → edit / import). */
 export function RecipeBox() {
@@ -59,8 +64,8 @@ export function RecipeBox() {
     >
       {view.mode === "list" && <RecipeList onOpen={(id) => setView({ mode: "detail", id })} />}
       {view.mode === "detail" && <RecipeDetail id={view.id} onEdit={() => setView({ mode: "edit", id: view.id })} onDeleted={() => setView({ mode: "list" })} />}
-      {view.mode === "edit" && <RecipeEditor id={view.id} draft={view.draft} jobId={view.jobId} onSaved={(id) => setView({ mode: "detail", id })} />}
-      {view.mode === "import" && <ImportBox initial={view.text} onDraft={(draft, jobId) => setView({ mode: "edit", draft, jobId })} />}
+      {view.mode === "edit" && <RecipeEditor id={view.id} draft={view.draft} jobId={view.jobId} initialPhoto={view.photo} onSaved={(id) => setView({ mode: "detail", id })} />}
+      {view.mode === "import" && <ImportBox initial={view.text} onDraft={(draft, jobId, photo) => setView({ mode: "edit", draft, jobId, photo })} />}
     </Sec>
   );
 }
@@ -360,7 +365,19 @@ interface EditIng {
   low: boolean;
 }
 
-function RecipeEditor({ id, draft, jobId, onSaved }: { id?: string; draft?: RecipeDraft; jobId?: string; onSaved: (id: string) => void }) {
+function RecipeEditor({
+  id,
+  draft,
+  jobId,
+  initialPhoto,
+  onSaved,
+}: {
+  id?: string;
+  draft?: RecipeDraft;
+  jobId?: string;
+  initialPhoto?: Blob;
+  onSaved: (id: string) => void;
+}) {
   const qc = useQueryClient();
   const { me } = usePeople();
   const { data: rows } = useRows<Recipe>("recipes");
@@ -392,7 +409,7 @@ function RecipeEditor({ id, draft, jobId, onSaved }: { id?: string; draft?: Reci
     "",
   ]);
   const [busy, setBusy] = useState(false);
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoFile, setPhotoFile] = useState<Blob | null>(initialPhoto ?? null);
   const low = draft?.confidence;
 
   const parseNum = (s: string) => {
@@ -449,7 +466,7 @@ function RecipeEditor({ id, draft, jobId, onSaved }: { id?: string; draft?: Reci
     <form onSubmit={save} className="space-y-2 text-sm">
       {draft && (
         <p className="m-0 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2 text-xs">
-          {draft.method === "json-ld" ? "Read from the website's recipe data." : draft.method === "gemini" ? "Read by Gemini from the text." : "Read with simple rules (no AI)."} Check it, then save.
+          {draft.method === "json-ld" ? "Read from the website's recipe data." : draft.method === "gemini" ? "Read by Gemini." : "Read with simple rules (no AI)."} Check it, then save.
           {lowCount > 0 && ` ${lowCount} ingredient${lowCount > 1 ? "s" : ""} highlighted need a look.`}
         </p>
       )}
@@ -478,6 +495,7 @@ function RecipeEditor({ id, draft, jobId, onSaved }: { id?: string; draft?: Reci
         <input type="file" accept="image/*" aria-label="Recipe photo" onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)} className="text-xs" />
       </label>
       {draft?.image_url && !photoFile && !f.photo && <p className="m-0 text-xs text-ink-2">The recipe&apos;s photo will be copied in when you save.</p>}
+      {initialPhoto && photoFile === initialPhoto && <p className="m-0 text-xs text-ink-2">Your first screenshot will be the recipe photo.</p>}
 
       <h4 className="mt-3 mb-0 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">Ingredients</h4>
       {ings.map((i, n) => (
@@ -540,13 +558,34 @@ const upd = (list: EditIng[], n: number, patch: Partial<EditIng>) => list.map((x
 
 const STAGES = ["Reading", "Structuring", "Ready for review"];
 
-function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: RecipeDraft, jobId: string) => void }) {
+function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: RecipeDraft, jobId: string, photo?: Blob) => void }) {
   const [text, setText] = useState(initial ?? "");
+  const [shots, setShots] = useState<{ blob: Blob; url: string }[]>([]);
+  const [usePhoto, setUsePhoto] = useState(false);
   const [stage, setStage] = useState(-1);
   const [error, setError] = useState<string | null>(null);
   const trimmed = text.trim();
   const onlyUrl = /^https?:\/\/\S+$/.test(trimmed);
-  const igOnly = onlyUrl && isInstagram(trimmed);
+  const igOnly = onlyUrl && isInstagram(trimmed) && shots.length === 0;
+
+  useEffect(() => () => shots.forEach((s) => URL.revokeObjectURL(s.url)), [shots]);
+
+  const addShots = async (files: FileList | null) => {
+    if (!files) return;
+    setError(null);
+    const room = 4 - shots.length;
+    if (files.length > room) setError("Up to 4 screenshots at a time.");
+    const next: { blob: Blob; url: string }[] = [];
+    for (const f of [...files].slice(0, room)) {
+      try {
+        const blob = await compressToWebp(f, 1600, 450_000); // keep text sharp enough to read
+        next.push({ blob, url: URL.createObjectURL(blob) });
+      } catch {
+        setError("Couldn't open one of those images.");
+      }
+    }
+    setShots((cur) => [...cur, ...next]);
+  };
 
   const paste = async () => {
     try {
@@ -562,10 +601,14 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
     const timer = setTimeout(() => setStage(1), 1500);
     try {
       const firstUrl = trimmed.match(/https?:\/\/\S+/)?.[0] ?? null;
-      const body = onlyUrl ? { url: trimmed } : { caption: trimmed, source_url: firstUrl };
+      let body: Record<string, unknown>;
+      if (shots.length) {
+        const images = await Promise.all(shots.map(async (s) => ({ mime: s.blob.type, data: await blobToBase64(s.blob) })));
+        body = { images, caption: onlyUrl ? "" : trimmed, source_url: firstUrl };
+      } else body = onlyUrl ? { url: trimmed } : { caption: trimmed, source_url: firstUrl };
       const { draft, job_id } = await callRecipes<{ draft: RecipeDraft; job_id: string }>("import", body);
       setStage(2);
-      onDraft(draft, job_id);
+      onDraft(draft, job_id, usePhoto && shots[0] ? shots[0].blob : undefined);
     } catch (e) {
       setError((e as Error).message);
       setStage(-1);
@@ -576,33 +619,64 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
   return (
     <div className="space-y-2 text-sm">
       <p className="m-0 text-ink-2">
-        Paste a recipe website link, or an Instagram post&apos;s caption (open the post → ⋯ / long-press the caption → Copy). Up to 20 imports a day.
+        Paste a recipe website link, <b>add screenshots</b> of an Instagram post (tap &ldquo;more&rdquo; first so the whole caption shows), or paste a caption. Up
+        to 20 imports a day.
       </p>
       <textarea
-        rows={5}
+        rows={4}
         className="w-full rounded-lg border border-[#dccdb2] bg-white p-2"
-        placeholder="https://… or the caption text"
+        placeholder="https://… or caption text (optional with screenshots)"
         aria-label="Link or caption to import"
         value={text}
         maxLength={10_000}
         onChange={(e) => setText(e.target.value)}
       />
+      <div>
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#c9b796] bg-white px-3 font-bold text-teak">
+          <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => (addShots(e.target.files), (e.target.value = ""))} disabled={shots.length >= 4} />
+          📷 Add screenshots {shots.length ? `(${shots.length}/4)` : ""}
+        </label>
+        {shots.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {shots.map((s, i) => (
+              <div key={s.url} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a screenshot */}
+                <img src={s.url} alt={`Screenshot ${i + 1}`} className="h-24 w-16 rounded-md border border-[#e6d9c2] object-cover" />
+                <button
+                  type="button"
+                  aria-label={`Remove screenshot ${i + 1}`}
+                  onClick={() => setShots(shots.filter((_, k) => k !== i))}
+                  className="absolute -top-2 -right-2 h-7 w-7 rounded-full bg-ink text-xs text-white"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+        {shots.length > 0 && (
+          <label className="mt-1 flex min-h-11 items-center gap-2 text-xs">
+            <input type="checkbox" checked={usePhoto} onChange={(e) => setUsePhoto(e.target.checked)} className="h-[18px] w-[18px] accent-red-oxide" />
+            Use the first screenshot as the recipe photo
+          </label>
+        )}
+      </div>
       {igOnly && (
         <p className="m-0 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2 text-xs">
-          Instagram links can&apos;t be read directly. Paste the post&apos;s caption below the link and the link will be kept as the source.
+          Instagram links can&apos;t be read directly. Add screenshots of the post (or paste its caption); the link will be kept as the source.
         </p>
       )}
       <div className="flex gap-2">
         <button type="button" className="min-h-11 rounded-lg border border-[#e0d2b8] bg-white px-3 text-sm font-bold" onClick={paste}>
           Paste
         </button>
-        <button type="button" className={`${addBtn} flex-1`} disabled={!trimmed || igOnly || stage >= 0} onClick={run}>
+        <button type="button" className={`${addBtn.replace("flex-none", "")} flex-1`} disabled={(!trimmed && !shots.length) || igOnly || stage >= 0} onClick={run}>
           {stage >= 0 ? "Importing…" : "Import"}
         </button>
       </div>
       {stage >= 0 && (
         <ol className="m-0 list-none p-0 text-xs" aria-live="polite">
-          {STAGES.map((s, i) => (
+          {(shots.length ? ["Uploading screenshots", "Reading them with Gemini", "Ready for review"] : STAGES).map((s, i) => (
             <li key={s} className={i < stage ? "text-leaf" : i === stage ? "font-bold text-ink" : "text-[#b4a693]"}>
               {i < stage ? "✓" : i === stage ? "•" : "○"} {s}
             </li>
@@ -616,4 +690,13 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
       )}
     </div>
   );
+}
+
+function blobToBase64(b: Blob): Promise<string> {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(",")[1] ?? "");
+    r.onerror = () => rej(new Error("Couldn't read the screenshot"));
+    r.readAsDataURL(b);
+  });
 }
