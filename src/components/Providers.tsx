@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useHouseholdRealtime } from "@/lib/household";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } }));
@@ -11,5 +12,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
-  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  return (
+    <QueryClientProvider client={client}>
+      <Realtime />
+      {children}
+    </QueryClientProvider>
+  );
+}
+
+/** The app's single live-updates subscription. */
+function Realtime() {
+  useHouseholdRealtime();
+  return null;
 }

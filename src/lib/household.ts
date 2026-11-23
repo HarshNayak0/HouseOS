@@ -65,29 +65,36 @@ async function loadHousehold(): Promise<HouseholdState> {
 }
 
 export function useHousehold() {
-  const qc = useQueryClient();
-  const query = useQuery({ queryKey: householdKey, queryFn: loadHousehold, enabled: authEnabled, staleTime: 60_000 });
-  const householdId = query.data?.me?.household_id;
+  return useQuery({ queryKey: householdKey, queryFn: loadHousehold, enabled: authEnabled, staleTime: 60_000 });
+}
 
-  // Live updates: names, colours, labels and new members.
+/**
+ * Live updates (names, colours, labels, new members) through Supabase Realtime.
+ * Call this exactly once for the whole app (it's mounted in <Providers>): a second subscriber to the
+ * same channel name would make supabase-js throw.
+ */
+export function useHouseholdRealtime() {
+  const qc = useQueryClient();
+  const { data } = useHousehold();
+  const householdId = data?.me?.household_id;
   useEffect(() => {
     const sb = supabaseBrowser();
     if (!sb || !householdId) return;
+    const topic = `household:${householdId}`;
+    // Clean up any leftover channel with the same name (e.g. after a fast remount).
+    sb.getChannels()
+      .filter((c) => c.topic === `realtime:${topic}`)
+      .forEach((c) => sb.removeChannel(c));
+    const refresh = () => qc.invalidateQueries({ queryKey: householdKey });
     const ch = sb
-      .channel(`household:${householdId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "members", filter: `household_id=eq.${householdId}` }, () =>
-        qc.invalidateQueries({ queryKey: householdKey }),
-      )
-      .on("postgres_changes", { event: "*", schema: "public", table: "household_settings", filter: `household_id=eq.${householdId}` }, () =>
-        qc.invalidateQueries({ queryKey: householdKey }),
-      )
+      .channel(topic)
+      .on("postgres_changes", { event: "*", schema: "public", table: "members", filter: `household_id=eq.${householdId}` }, refresh)
+      .on("postgres_changes", { event: "*", schema: "public", table: "household_settings", filter: `household_id=eq.${householdId}` }, refresh)
       .subscribe();
     return () => {
       sb.removeChannel(ch);
     };
   }, [householdId, qc]);
-
-  return query;
 }
 
 /** Room labels with the household's overrides applied. */
