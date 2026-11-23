@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Logo and app icons are renders of the real 3D house (`src/scene/logo.ts`, `scripts/render-logo.cjs`); masters in `docs/brand/` | Harsh asked for a realistic, lit 3D logo; reusing the model keeps it consistent and free |
 | 2026-11-23 | Phase 2 tables limited to household, members, invites, settings, notification prefs, push subscriptions, activity log; later phases add their own migrations | Keeps each phase's schema reviewable; the full schema is still the plan in PLAN §3 |
 | 2026-11-23 | Invites, joining, leaving and household creation are `security definer` SQL functions; clients get column-level update grants only | Keeps the two-member rule, single-use 48 h tokens and roles enforceable in the database, not just the UI |
 | 2026-11-23 | Invite tokens: 24 random bytes (hex); only the SHA-256 hash is stored | A leaked database row can't be turned back into a working link |

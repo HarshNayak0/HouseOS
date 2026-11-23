@@ -148,6 +148,20 @@ Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `
 - **Notifications:** Web Push with VAPID keys. `public/sw.js` shows them; Settings → Notifications turns them on per device and sends a test. iPhone needs Veedu added to the Home Screen first (iOS 16.4+); the app shows a guide.
 - **Export:** Settings → Your data downloads everything as JSON.
 
+## Logo
+
+`docs/brand/veedu-logo-1024.png` (cream background) and `docs/brand/veedu-logo-transparent-1024.png` are renders of the 3D house. To re-render them and the app icons after changing the house:
+
+```bash
+NEXT_PUBLIC_DEV_PAGES=1 npm run build && npm start -- -p 3100
+```
+
+Then, in a second terminal:
+
+```bash
+node scripts/render-logo.cjs
+```
+
 ## Time zones
 
 All times are stored in UTC and displayed in America/Toronto (`src/lib/time.ts`, with daylight-saving tests).
