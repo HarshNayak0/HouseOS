@@ -8,13 +8,30 @@ import { planReminders, type Chore, type Member, type Note, type Prefs, type Tas
 
 const env = (k: string) => Deno.env.get(k) ?? "";
 
+/**
+ * The project's admin key. Newer projects provide SUPABASE_SECRET_KEYS (JSON: {"default": "sb_secret_…"});
+ * older ones provide SUPABASE_SERVICE_ROLE_KEY.
+ */
+function adminKey(): string {
+  try {
+    const keys = JSON.parse(env("SUPABASE_SECRET_KEYS") || "{}") as Record<string, string>;
+    const k = keys.default ?? Object.values(keys)[0];
+    if (k) return k;
+  } catch {
+    /* not JSON */
+  }
+  return env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
+}
+
 Deno.serve(async () => {
   const pub = env("VAPID_PUBLIC_KEY"),
     priv = env("VAPID_PRIVATE_KEY"),
     subject = env("VAPID_SUBJECT");
   if (!pub || !priv || !subject) return Response.json({ error: "VAPID secrets missing" }, { status: 500 });
   webpush.setVapidDetails(subject, pub, priv);
-  const db = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
+  const key = adminKey();
+  if (!key) return Response.json({ error: "No secret/service key available to the function" }, { status: 500 });
+  const db = createClient(env("SUPABASE_URL"), key, { auth: { persistSession: false } });
 
   const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
   const [members, prefs, chores, tasks, notes, subs] = await Promise.all([
