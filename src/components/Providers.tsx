@@ -3,6 +3,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useHouseholdRealtime } from "@/lib/household";
+import { useListsRealtime } from "@/lib/lists/rows";
+import { Toaster } from "@/panels/ui";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } }));
@@ -16,12 +18,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <QueryClientProvider client={client}>
       <Realtime />
       {children}
+      <Toaster />
     </QueryClientProvider>
   );
 }
 
-/** The app's single live-updates subscription. */
+/** The app's live-updates subscriptions (each opened exactly once). */
 function Realtime() {
   useHouseholdRealtime();
+  useListsRealtime();
   return null;
 }

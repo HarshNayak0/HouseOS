@@ -19,8 +19,8 @@ run() { psql "$DATABASE_URL" -q -v ON_ERROR_STOP=1 "$@"; }
 
 for t in tests/db/*.test.sql; do
   echo "▶ $t"
-  run -c "drop schema if exists public cascade; create schema public;" >/dev/null
-  run -f tests/db/supabase-stub.sql >/dev/null
+  run -c "drop schema if exists public cascade; drop schema if exists auth cascade; create schema public;" >/dev/null 2>&1
+  run -f tests/db/supabase-stub.sql >/dev/null 2>&1
   for m in supabase/migrations/*.sql; do run -f "$m" >/dev/null; done
   run -f "$t"
 done

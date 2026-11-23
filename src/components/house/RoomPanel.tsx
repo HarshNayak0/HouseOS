@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import type { RoomId, RoomLabel } from "@/scene/config";
 import { PLACEHOLDERS } from "@/panels/placeholders";
+import { RoomContent, hasRealContent } from "@/panels/RoomContent";
+import { useHousehold } from "@/lib/household";
 
 /**
  * The 2D panel for a room. Desktop: right-hand panel. Mobile (≤720 px): bottom sheet at ~58% height.
@@ -19,6 +21,8 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
   }, [room]);
 
   const label = shown ? labels[shown] : null;
+  const { data } = useHousehold();
+  const real = !!shown && !!data?.me && hasRealContent(shown);
   const ph = shown ? PLACEHOLDERS[shown] : null;
 
   return (
@@ -52,19 +56,25 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
             </button>
           </div>
           <div className="flex-1 overflow-auto px-4 pt-1 pb-5">
-            <div className="mt-4">
-              <h3 className="mb-1.5 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">Coming in phase {ph.phase}</h3>
-              <ul className="m-0 list-none p-0">
-                {ph.items.map((it) => (
-                  <li key={it} className="border-b border-dashed border-[#e6d9c2] py-2 text-sm last:border-b-0">
-                    {it}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <p className="mt-4 border-t border-[#eadfcb] pt-2.5 text-[11.5px] text-ink-2 italic">
-              This room is a placeholder. Nothing here is saved yet.
-            </p>
+            {real && shown ? (
+              <RoomContent room={shown} />
+            ) : (
+              <>
+                <div className="mt-4">
+                  <h3 className="mb-1.5 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">Coming in phase {ph.phase}</h3>
+                  <ul className="m-0 list-none p-0">
+                    {ph.items.map((it) => (
+                      <li key={it} className="border-b border-dashed border-[#e6d9c2] py-2 text-sm last:border-b-0">
+                        {it}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <p className="mt-4 border-t border-[#eadfcb] pt-2.5 text-[11.5px] text-ink-2 italic">
+                  This room is a placeholder. Nothing here is saved yet.
+                </p>
+              </>
+            )}
           </div>
         </>
       )}

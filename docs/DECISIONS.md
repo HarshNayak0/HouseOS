@@ -4,6 +4,14 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Phase 3 lists: shopping (+ learned frequent items), tasks + subtasks (personal tasks hidden by RLS), chores + completions, notes | SPEC §4.1–4.5 core lists |
+| 2026-11-24 | Chore recurrence: RRULE evaluated on Toronto "floating" wall-clock time, then converted to UTC; chores due 18:00 Toronto; completing schedules the next date after max(due, now) | DST-safe; missed weeks don't pile up |
+| 2026-11-24 | `complete_chore` / `undo_chore_completion` RPCs; the app passes the next date (computed from the RRULE), the database checks it moves forward and handles rotation | Keeps the completion log, rotation and next date consistent in one transaction |
+| 2026-11-24 | Soft delete everywhere (`deleted_at`), "Recently deleted" with Restore, hourly `pg_cron` job purges after 7 days, archives expired notes and prunes the activity log after 90 days | SPEC: 7-day trash, expiring notes, 90-day feed |
+| 2026-11-24 | Clients may not hard-delete; column grants limit what each table accepts; `updated_by` set by trigger | Enforced in the database, not the UI |
+| 2026-11-24 | Optimistic updates via TanStack Query with client-generated ids; one Realtime channel for all lists refreshes the other phone; "updated by … just now" hint for 6 s | Instant feel; last write wins as specified |
+| 2026-11-24 | Activity feed written by database triggers (personal tasks never logged) | Can't be skipped or faked by a client; phase 5 shows it |
+| 2026-11-24 | Push reminders for chores/tasks/notes split into phase 3b (Supabase Edge Function + pg_cron) | Needs a function deployed in Supabase; keeps this part zero-setup |
 | 2026-11-23 | Household realtime subscription lives in one place (`<Providers>`), not inside `useHousehold()` | Two components using the hook opened the same channel twice and supabase-js threw, crashing the house on a fresh load |
 | 2026-11-23 | `app/error.tsx` and `global-error.tsx` show the error text and version | So crashes on real devices can be reported precisely |
 | 2026-11-23 | Logo and app icons are renders of the real 3D house (`src/scene/logo.ts`, `scripts/render-logo.cjs`); masters in `docs/brand/` | Harsh asked for a realistic, lit 3D logo; reusing the model keeps it consistent and free |

@@ -8,7 +8,7 @@ import type { HouseController } from "@/scene/camera/controller";
 import { ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/scene/config";
 import { useHousehold, useRoomLabels } from "@/lib/household";
 import { authEnabled } from "@/lib/supabase/config";
-import { EMPTY_INDICATORS } from "@/scene/indicators/state";
+import { useIndicatorState } from "@/lib/lists/indicators";
 import {
   chooseView,
   effectiveReducedMotion,
@@ -83,8 +83,15 @@ export function HouseApp() {
   useEffect(() => {
     if (!ctrl) return;
     ctrl.setHandlers({ onTapRoom: goRoom, onTapOutside: () => ctrl.goInside(), onModeChange: setMode });
-    ctrl.setIndicators(EMPTY_INDICATORS);
   }, [ctrl, goRoom]);
+
+  // In-scene indicators follow the real lists (fridge badge, laundry heap, nilavilakku).
+  const indicators = useIndicatorState();
+  const indicatorKey = JSON.stringify(indicators);
+  useEffect(() => {
+    ctrl?.setIndicators(indicators);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run only when the values change
+  }, [ctrl, indicatorKey]);
 
   // The URL is the source of truth for the selected room.
   useEffect(() => {

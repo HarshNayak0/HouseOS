@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 2 (sign-in and household) built; waiting for Supabase and Google to be set up. Rooms still show placeholder panels until phase 3.
+**Status:** phase 3 (shopping, tasks, chores, notes) built. Push reminders (phase 3b) next.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 

@@ -1,7 +1,21 @@
 import { supabaseServer } from "@/lib/supabase/server";
 
 /** Tables included in "Export all data". Add each new table here as later phases create them. */
-const TABLES = ["households", "members", "household_settings", "notification_prefs", "activity_log", "invites"] as const;
+const TABLES = [
+  "households",
+  "members",
+  "household_settings",
+  "notification_prefs",
+  "activity_log",
+  "invites",
+  "shopping_items",
+  "item_frequency",
+  "tasks",
+  "subtasks",
+  "chores",
+  "chore_completions",
+  "notes",
+] as const;
 
 /** Downloads everything the signed-in person can see (RLS applies) as one JSON file. */
 export async function GET() {
