@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | Host on Vercel Hobby (compared with Cloudflare Pages + Supabase Edge Functions, Netlify, Render, Oracle, Cloud Run) | Least work, Next.js runs as specced, per-branch previews; personal-use limit fits a two-person app. Cloudflare was the runner-up if we ever need to leave |
 | 2026-11-23 | Security headers (CSP, HSTS, nosniff, frame-deny) set in `next.config.ts`; CSP allows `'unsafe-inline'` scripts for now | Next.js hydration needs it without nonces; tighten with nonces in phase 8 |
 | 2026-11-23 | Keep-alive calls a tiny `public.ping()` SQL function, not just the REST root | Supabase pausing is based on database activity, so the ping must run a query |
 | 2026-11-23 | Backups use the Supabase CLI (`db dump` roles / schema / data), GPG-encrypted, kept 56 days as workflow artifacts | Matches Supabase's documented restore; 56 days = last 8 weekly dumps; doesn't bloat the repo |
