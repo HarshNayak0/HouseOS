@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { GoogleButton } from "@/components/GoogleButton";
 import { Brand, PageShell, PaperCard } from "@/components/ui/Card";
 import { authEnabled } from "@/lib/supabase/config";
@@ -26,6 +27,9 @@ export default async function SignInPage({ searchParams }: PageProps<"/signin">)
           <p className="text-sm text-ink-2">Sign-in isn&apos;t set up yet.</p>
         )}
       </PaperCard>
+      <p className="mt-4 text-center text-xs text-ink-2">
+        <Link href="/privacy" className="underline">Privacy</Link> · <Link href="/terms" className="underline">Terms</Link>
+      </p>
     </PageShell>
   );
 }
