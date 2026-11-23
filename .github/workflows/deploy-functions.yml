@@ -47,12 +47,12 @@ jobs:
           if [ -z "$VAPID_PUBLIC_KEY" ] || [ -z "$VAPID_PRIVATE_KEY" ] || [ -z "$VAPID_SUBJECT" ]; then
             echo "::error::Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT as GitHub secrets"; exit 1
           fi
-          supabase secrets set --project-ref "$PROJECT_REF" \
+          supabase secrets set --yes --project-ref "$PROJECT_REF" \
             VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="$VAPID_SUBJECT"
       - name: Deploy notify
         if: steps.gate.outputs.run == 'true'
         # no JWT check: the function takes no input and is safe to call any time
-        run: supabase functions deploy notify --project-ref "$PROJECT_REF" --no-verify-jwt
+        run: supabase functions deploy notify --yes --project-ref "$PROJECT_REF" --no-verify-jwt
       - name: Run it once
         if: steps.gate.outputs.run == 'true'
         run: |
