@@ -4,6 +4,8 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-23 | "Camera animations" setting: follow the system reduce-motion setting (default) or always fly | Harsh's desktop has reduce motion on (so flights were instant by design) but he wants flights; default still respects the spec |
+| 2026-11-23 | Precompile shaders after load; frame-rate check skips the first second | First frames include one-off shader compilation, which made the slow-device check too pessimistic |
 | 2026-11-23 | Room camera framing computed to fit the room's bounding box into the screen area not covered by the panel/sheet (replaces the prototype's size-scaled offsets) | The prototype's offset grew with room size, so on phones the 16 m backyard view landed on the bedroom; unit tests now check every room on four screen sizes |
 | 2026-11-23 | "This device" report in Settings (version, view setting, reduce-motion, measured fps, GPU, screen) | To diagnose device-specific 3D problems without guessing |
 | 2026-11-23 | Camera is aimed at the target on every flight frame (`camera.lookAt`) | drei only runs `OrbitControls.update()` (which aims the camera) while controls are enabled; they are disabled during flights, so the camera slid without turning, then snapped at the end |

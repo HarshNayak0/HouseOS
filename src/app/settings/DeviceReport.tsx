@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { prefersReducedMotion, readViewPref } from "@/lib/view-pref";
+import { prefersReducedMotion, readMotionPref, readViewPref } from "@/lib/view-pref";
 
 /** A short report about this device, to help diagnose 3D problems. */
 export function DeviceReport() {
@@ -24,6 +24,7 @@ export function DeviceReport() {
       ["Version", process.env.NEXT_PUBLIC_BUILD ?? "?"],
       ["House view setting", readViewPref() ?? "automatic"],
       ["Reduce motion (system setting)", prefersReducedMotion() ? "on" : "off"],
+      ["Camera animations", readMotionPref() === "always" ? "always" : "follow system"],
       ["3D frames per second", fps],
       ["Graphics", renderer],
       ["Screen", `${window.innerWidth} × ${window.innerHeight} @ ${window.devicePixelRatio}x`],

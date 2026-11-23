@@ -78,3 +78,11 @@ test("settings page lets you choose 3D or 2D", async ({ page }) => {
   await page.getByRole("link", { name: /Back to the house/ }).click();
   await expect(page.getByRole("navigation", { name: /floor plan/ })).toBeVisible();
 });
+
+test("camera animations can override the system reduce-motion setting", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/settings");
+  await expect(page.getByText(/Reduce motion is on here/)).toBeVisible();
+  await page.getByLabel(/Always fly the camera/).check();
+  expect(await page.evaluate(() => localStorage.getItem("veedu.motion"))).toBe("always");
+});

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { DeviceReport } from "./DeviceReport";
-import { ViewSetting } from "./SettingsView";
+import { MotionSetting, ViewSetting } from "./SettingsView";
 
 export const metadata: Metadata = { title: "Settings · Veedu" };
 
@@ -29,6 +29,9 @@ export default function SettingsPage() {
           <h1 className="m-0 font-serif text-[26px] font-semibold">Settings</h1>
           <div className="mt-4">
             <ViewSetting />
+          </div>
+          <div className="mt-4">
+            <MotionSetting />
           </div>
           <h2 className="mt-6 mb-1.5 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">Coming later</h2>
           <ul className="m-0 list-none p-0">

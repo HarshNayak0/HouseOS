@@ -46,3 +46,31 @@ export function chooseView(opts: { pref: ViewPref | null; webgl: boolean; reduce
   if (opts.reducedMotion) return { view: "2d", reason: "reduced-motion" };
   return { view: "3d", reason: "default" };
 }
+
+/**
+ * Camera animations: follow the system "reduce motion" setting (default), or always animate.
+ */
+export type MotionPref = "system" | "always";
+const MOTION_KEY = "veedu.motion";
+
+export function readMotionPref(): MotionPref {
+  try {
+    return localStorage.getItem(MOTION_KEY) === "always" ? "always" : "system";
+  } catch {
+    return "system";
+  }
+}
+
+export function writeMotionPref(v: MotionPref) {
+  try {
+    if (v === "always") localStorage.setItem(MOTION_KEY, v);
+    else localStorage.removeItem(MOTION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Reduced motion after applying the user's override. */
+export function effectiveReducedMotion(): boolean {
+  return prefersReducedMotion() && readMotionPref() !== "always";
+}

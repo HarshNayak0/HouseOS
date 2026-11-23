@@ -53,6 +53,8 @@ function Scene(props: HouseCanvasProps) {
         if (cancelled || !controlsRef.current) return;
         scene.add(model.root);
         scene.fog = model.lighting.fog;
+        // Compile every shader now, so the first frames (and the first flight) don't stutter.
+        gl.compile(scene, camera);
         const ctrl = new HouseController(
           model,
           camera as THREE.PerspectiveCamera,
@@ -121,7 +123,9 @@ function Scene(props: HouseCanvasProps) {
     ctrl.update(now);
     const f = fps.current;
     if (!f.reported) {
-      if (!f.start) f.start = now;
+      // Skip the first second (one-off start-up work), then measure for 3 s.
+      if (!f.start) f.start = now + 1000;
+      if (now < f.start) return;
       f.frames++;
       if (now - f.start > 3000) {
         f.reported = true;

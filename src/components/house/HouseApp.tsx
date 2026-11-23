@@ -9,8 +9,8 @@ import { DEFAULT_LABELS, ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/sce
 import { EMPTY_INDICATORS } from "@/scene/indicators/state";
 import {
   chooseView,
+  effectiveReducedMotion,
   hasWebGL,
-  prefersReducedMotion,
   readViewPref,
   writeViewPref,
   type ViewPref,
@@ -43,7 +43,7 @@ export function HouseApp() {
 
   // Pick 3D or 2D once on the client (needs window).
   useEffect(() => {
-    const rm = prefersReducedMotion();
+    const rm = effectiveReducedMotion();
     const { view: v } = chooseView({ pref: readViewPref(), webgl: hasWebGL(), reducedMotion: rm });
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only detection
     setReducedMotion(rm);
