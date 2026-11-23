@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 4 (Google Calendar, milestones) built. Next: phase 5, the dashboard.
+**Status:** phase 5 (living-room dashboard) done. Next: phase 6, recipes.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 

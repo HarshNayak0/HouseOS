@@ -3,6 +3,7 @@
 import type { RoomId } from "@/scene/config";
 import { CalendarView } from "./Calendar";
 import { Chores } from "./Chores";
+import { ActivityFeed, Dashboard, TogetherCounter } from "./Dashboard";
 import { Milestones } from "./Milestones";
 import { NotesBoard } from "./Notes";
 import { ShoppingList } from "./ShoppingList";
@@ -38,8 +39,10 @@ export function RoomContent({ room }: { room: RoomId }) {
     case "living":
       return (
         <>
+          <Dashboard />
           <NotesBoard />
-          <Later>The dashboard (today, the week ahead, what&apos;s due) arrives in phase 5.</Later>
+          <TogetherCounter />
+          <ActivityFeed />
         </>
       );
     default:

@@ -1,6 +1,6 @@
 # Veedu — build plan (for approval)
 
-Status: **approved 2026-11-23** (with the Instagram change below). Phases 0–3 done; phase 4 built (needs Google Cloud steps). Next: phase 5. Live at https://veeduos.vercel.app
+Status: **approved 2026-11-23** (with the Instagram change below). Phases 0–5 done. Next: phase 6 (recipes). Live at https://veeduos.vercel.app
 Based on `SPEC.md` (v3) and `reference/veedu-prototype.html`.
 
 People: **Harsh** (owner) and **Prerna Nair** (partner).

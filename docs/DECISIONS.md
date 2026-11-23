@@ -4,6 +4,9 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Dashboard built entirely from existing data on the client; ranking of the time-sensitive strip is a pure, unit-tested function (`src/lib/dashboard.ts`) | No new tables or server work; trips and vault renewals slot in when phase 7 adds them |
+| 2026-11-24 | Date-only tasks count as overdue after their day; timed tasks after their time | Matches how people read "due today" |
+| 2026-11-24 | Dashboard items open their room in place (`history.pushState`), so the camera flies there | Feels like moving through the house |
 | 2026-11-24 | Phone room panel is a draggable sheet: drag the top bar to full screen / back to ~58% / down to close; tapping the grab bar toggles | More room for lists on phones; the bar is a real button for keyboard and screen readers |
 | 2026-11-24 | All Google Calendar work runs in one Supabase Edge Function (`calendar`): OAuth start/callback, sync, event writes, the Us calendar | Google client secret and the token key never touch Vercel or the browser |
 | 2026-11-24 | Scope `https://www.googleapis.com/auth/calendar` | One scope covers reading both calendars, writing events, and creating/sharing the Us calendar; fine for an unverified personal app (<100 users) |

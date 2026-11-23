@@ -34,13 +34,14 @@ export interface HouseholdState {
   members: Member[];
   settings: HouseholdSettings | null;
   householdName: string | null;
+  togetherSince: string | null;
 }
 
 export const householdKey = ["household"] as const;
 
 async function loadHousehold(): Promise<HouseholdState> {
   const sb = supabaseBrowser();
-  const empty: HouseholdState = { user: null, me: null, partner: null, members: [], settings: null, householdName: null };
+  const empty: HouseholdState = { user: null, me: null, partner: null, members: [], settings: null, householdName: null, togetherSince: null };
   if (!sb) return empty;
   const {
     data: { user },
@@ -52,7 +53,7 @@ async function loadHousehold(): Promise<HouseholdState> {
   if (!me) return { ...empty, user };
   const [{ data: settings }, { data: household }] = await Promise.all([
     sb.from("household_settings").select("household_id, room_labels, both_color").eq("household_id", me.household_id).maybeSingle(),
-    sb.from("households").select("name").eq("id", me.household_id).maybeSingle(),
+    sb.from("households").select("name, together_since").eq("id", me.household_id).maybeSingle(),
   ]);
   return {
     user,
@@ -61,6 +62,7 @@ async function loadHousehold(): Promise<HouseholdState> {
     members: members as Member[],
     settings: (settings as HouseholdSettings | null) ?? null,
     householdName: household?.name ?? null,
+    togetherSince: (household as { together_since?: string | null } | null)?.together_since ?? null,
   };
 }
 
