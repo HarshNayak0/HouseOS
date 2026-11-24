@@ -13,6 +13,7 @@ import type { Chore } from "./Chores";
 import type { Task } from "./Tasks";
 import { daysBetween, packedPct } from "@/lib/trips";
 import type { PackingItem, Trip } from "./Trips";
+import type { VaultItemRow } from "@/lib/vault";
 import { Sec, WhoChip, linkBtn, usePeople } from "./ui";
 
 const TONE: Record<UrgentTone, string> = {
@@ -39,6 +40,7 @@ export function Dashboard() {
   const { data: milestones } = useRows<Milestone>("milestones");
   const { data: trips } = useRows<Trip>("trips");
   const { data: packing } = useRows<PackingItem>("packing_items");
+  const { data: vault } = useRows<VaultItemRow>("vault_items");
   const { items } = useCalendarItems();
 
   const urgent = buildUrgent({
@@ -53,6 +55,9 @@ export function Dashboard() {
     trips: live(trips)
       .filter((t) => t.ends_on >= today)
       .map((t) => ({ id: t.id, title: t.title, starts_on: t.starts_on, daysAway: Math.max(0, daysBetween(today, t.starts_on)), packedPct: packedPct(packing ?? [], t.id) })),
+    renewals: live(vault)
+      .filter((v) => v.renewal_date && v.renewal_date >= today)
+      .map((v) => ({ id: v.id, title: v.label, date: v.renewal_date!, daysAway: daysBetween(today, v.renewal_date!) })),
     dayKey: (s) => torontoDayKey(s),
     label: (s, t) => dueLabel(s, t, now),
   });

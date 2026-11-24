@@ -17,6 +17,8 @@ The **Weekly backup** workflow saves an encrypted dump every Sunday and keeps th
    ```
 5. Update the Supabase URL and keys in Vercel and in GitHub Secrets if the project changed.
 
+**The vault needs its key.** Vault items are encrypted with `VAULT_MASTER_KEY` (a GitHub secret, copied into the Supabase function secrets on deploy). The backup holds only ciphertext. Restore it into a new project, keep the **same** `VAULT_MASTER_KEY`, and re-run the deploy workflow: the vault opens as before. Without that key, nobody can read the vault, including you. Keep a copy in your password manager.
+
 Storage files (photos, PDFs) are **not** in the database dump. The usage monitor (phase 8) will note how much is in Storage; a storage export can be added later if you want one.
 
 Tip: once a quarter, do a test restore into a throwaway free project to make sure backups work.

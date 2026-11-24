@@ -4,6 +4,13 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Vault: AES-256-GCM envelope encryption in a `vault` Edge Function; per-item data key wrapped by `VAULT_MASTER_KEY` (function secret only); item id as associated data | SPEC §4.6; protects against a leaked database/backup at $0. Not end-to-end (the server can decrypt): documented, no bank passwords |
+| 2026-11-24 | Split tables: `vault_items` (label, section, renewal date; household can read) and `vault_secrets` (ciphertext; no app access at all) | Renewals feed the calendar, dashboard and bell while locked; secrets never reach the browser except through an unlocked session |
+| 2026-11-24 | Unlock = passkey (@simplewebauthn, rpID = the app's host) or own 6-digit PIN; token in memory only, 5 min idle / 30 min max | SPEC; nothing left behind in storage on a shared or lost phone |
+| 2026-11-24 | PIN: PBKDF2 over a pepper from the master key; tries counted atomically before checking (`vault_pin_try`); pauses 15 min / 1 h / 24 h | A 6-digit PIN is weak on its own; parallel guesses can't slip past the counter |
+| 2026-11-24 | First PIN and PIN reset need a Google sign-in from the last 15 minutes (JWT `amr` time) | Someone holding an unlocked phone can't quietly set a PIN and read the vault |
+| 2026-11-24 | Vault files in a separate `vault-files` bucket with no user policies; signed upload and 60-second download links from the function | Lease PDFs stay behind the lock, unlike `household-files` |
+| 2026-11-24 | Vault trash: soft delete, purged with its files by the function after 7 days (not by the SQL purge) | SQL can't delete storage files; the function can |
 | 2026-11-24 | Trips can be renamed and re-dated; moving the start keeps the trip length and (optionally) shifts the day-by-day plan; plan items left outside the dates are listed to move or delete | Plans change; nothing is silently hidden |
 | 2026-11-24 | Phase 7 split: 7a bedroom + backyard, 7b closet vault | The vault needs its own key setup and careful testing; keeping it separate keeps each test pass small |
 | 2026-11-24 | Date ratings: one row per person, insert-then-update, editable only by its owner (RLS on `member_id`) | Same pattern as recipe ratings; each of you keeps your own score |

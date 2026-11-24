@@ -6,7 +6,8 @@ import { visibleNotes } from "@/panels/Notes";
 import type { ShoppingItem } from "@/panels/ShoppingList";
 import type { DateIdea } from "@/panels/Dates";
 import type { Trip } from "@/panels/Trips";
-import { inWeek, tripIsSoon } from "@/lib/trips";
+import type { VaultItemRow } from "@/lib/vault";
+import { daysBetween, inWeek, tripIsSoon } from "@/lib/trips";
 import { EMPTY_INDICATORS, type IndicatorState } from "@/scene/indicators/state";
 import { useHousehold } from "@/lib/household";
 import { torontoDayKey } from "@/lib/time";
@@ -22,6 +23,7 @@ export function useIndicatorState(): IndicatorState {
   const { data: notes } = useRows<Note>("notes");
   const { data: trips } = useRows<Trip>("trips");
   const { data: dates } = useRows<DateIdea>("date_ideas");
+  const { data: vault } = useRows<VaultItemRow>("vault_items");
   const nowMs = useNow();
   if (!data?.me) return EMPTY_INDICATORS;
   const now = new Date(nowMs);
@@ -38,6 +40,8 @@ export function useIndicatorState(): IndicatorState {
     // the boat lantern: a trip starts within 30 days (or is under way)
     tripSoon: live(trips).some((t) => tripIsSoon(t, today)),
     // the bedroom lamp: a date planned for this Mon–Sun week
+    // the brass bell on the closet door: a lease or insurance renewal within 30 days
+    renewalSoon: live(vault).some((v) => !!v.renewal_date && v.renewal_date >= today && daysBetween(today, v.renewal_date) <= 30),
     dateThisWeek: live(dates).some((d) => d.status === "planned" && !!d.planned_for && inWeek(torontoDayKey(d.planned_for), weekStart)),
   };
 }

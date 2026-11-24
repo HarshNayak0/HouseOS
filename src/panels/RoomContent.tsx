@@ -11,8 +11,9 @@ import { RecipeBox } from "./Recipes";
 import { ShoppingList } from "./ShoppingList";
 import { Tasks } from "./Tasks";
 import { TripsRoom } from "./Trips";
+import { ClosetVault } from "./Vault";
 
-const REAL: RoomId[] = ["living", "kitchen", "office", "wash", "bedroom", "backyard"];
+const REAL: RoomId[] = ["living", "kitchen", "office", "wash", "bedroom", "backyard", "closet"];
 export const hasRealContent = (room: RoomId) => REAL.includes(room);
 
 
@@ -40,6 +41,8 @@ export function RoomContent({ room }: { room: RoomId }) {
       return <DateIdeas />;
     case "backyard":
       return <TripsRoom />;
+    case "closet":
+      return <ClosetVault />;
     case "living":
       return (
         <>

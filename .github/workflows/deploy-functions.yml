@@ -29,6 +29,7 @@ jobs:
       GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
       TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      VAULT_MASTER_KEY: ${{ secrets.VAULT_MASTER_KEY }}
     steps:
       - name: Skip until the access token exists
         id: gate
@@ -62,12 +63,17 @@ jobs:
           else
             echo "::notice::GEMINI_API_KEY not set — caption imports use the simple rule-based reader."
           fi
+          if [ -n "$VAULT_MASTER_KEY" ]; then
+            args+=(VAULT_MASTER_KEY="$VAULT_MASTER_KEY")
+          else
+            echo "::notice::VAULT_MASTER_KEY not set — the closet vault will say it isn't set up."
+          fi
           supabase secrets set --yes --project-ref "$PROJECT_REF" "${args[@]}"
       - name: Deploy functions
         if: steps.gate.outputs.run == 'true'
-        # no JWT check: notify takes no input; calendar checks the caller's session itself where needed
+        # no gateway JWT check: notify takes no input; the others check the caller's session themselves
         run: |
-          for fn in notify calendar recipes; do
+          for fn in notify calendar recipes vault; do
             supabase functions deploy "$fn" --yes --project-ref "$PROJECT_REF" --no-verify-jwt
           done
       - name: Run once

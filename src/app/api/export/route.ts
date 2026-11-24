@@ -33,6 +33,7 @@ const TABLES = [
   "trip_expenses",
   "packing_items",
   "packing_templates",
+  "vault_items", // labels and renewal dates only: the encrypted details never leave the vault function
 ] as const;
 
 /** Downloads everything the signed-in person can see (RLS applies) as one JSON file. */

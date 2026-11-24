@@ -62,7 +62,7 @@ export function buildUrgent(i: UrgentInput, limit = 10): UrgentItem[] {
   }
   for (const r of i.renewals ?? []) {
     if (r.daysAway < 0 || r.daysAway > 30) continue;
-    out.push({ key: `r:${r.id}`, tone: "renewal", title: r.title, detail: `renews in ${r.daysAway} days`, room: "closet", at: r.daysAway });
+    out.push({ key: `r:${r.id}`, tone: "renewal", title: r.title, detail: r.daysAway === 0 ? "renews today" : r.daysAway === 1 ? "renews tomorrow" : `renews in ${r.daysAway} days`, room: "closet", at: r.daysAway });
   }
   return out.sort((a, b) => ORDER.indexOf(a.tone) - ORDER.indexOf(b.tone) || a.at - b.at).slice(0, limit);
 }

@@ -39,7 +39,8 @@ export type ListTable =
   | "trip_bookings"
   | "trip_expenses"
   | "packing_items"
-  | "packing_templates";
+  | "packing_templates"
+  | "vault_items";
 export const rowsKey = (t: ListTable) => ["rows", t] as const;
 
 export interface BaseRow {
@@ -176,6 +177,7 @@ const LIVE_TABLES: ListTable[] = [
   "trip_expenses",
   "packing_items",
   "packing_templates",
+  "vault_items",
 ];
 
 /**

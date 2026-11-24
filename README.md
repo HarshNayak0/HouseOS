@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 7a (bedroom dates and backyard trips) built. Next: phase 7b, the coat closet vault.
+**Status:** phase 7 built (bedroom, backyard, coat-closet vault). Next: phase 8, polish and launch checks.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -189,6 +189,28 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
 - **Trips elsewhere in the app:** they appear on the calendar as all-day spans and in the living-room strip when 30 days away or less. The boat lantern lights up from 30 days before a trip until it ends.
 - **Files:** photos and attachments live in the private `household-files` bucket, one folder per household. Links are signed and expire after an hour.
 - **Tests:** the pure helpers are in `src/lib/trips.ts` (unit-tested). Access rules are checked in `tests/db/dates_trips.test.sql`.
+
+## Coat closet vault
+
+- **What's inside:**
+  - Wi-Fi
+  - contacts
+  - lease and insurance, whose renewal dates appear on the calendar and in the dashboard strip, and ring the brass bell on the closet door within 30 days
+  - appliances, with a manual as a link or a PDF up to 5 MB
+  - shared accounts
+- **Unlocking:**
+  - A passkey (fingerprint or face) or your own 6-digit PIN. Each person has their own.
+  - Setting up the vault, or resetting a forgotten PIN, needs a fresh Google sign-in from the last 15 minutes.
+  - The PIN pauses after 5 wrong tries (15 minutes), after 10 (1 hour), and from 15 onwards (24 hours). Tries are counted atomically in the database.
+  - It locks itself after 5 minutes without vault activity (30 minutes at most), and the Lock button locks it at once. The unlock token and the decrypted items live only in the page's memory.
+- **Encryption** (`supabase/functions/vault`):
+  - Each item's details are sealed with AES-256-GCM using a fresh data key, with the item id as associated data. That data key is wrapped by `VAULT_MASTER_KEY`, which exists only in the function's secrets.
+  - The database holds ciphertext and wrapped keys in `vault_secrets`, a table app users can't read at all. Only the label, section and renewal date are readable (`vault_items`), so the dashboard works while locked.
+  - PINs are hashed with PBKDF2 over a pepper derived from the master key, so a database copy alone can't be brute-forced.
+  - Attachments go to the private `vault-files` bucket, which has no user access. They are uploaded through one-time signed links and opened with 60-second links.
+  - Nothing is logged. The data export includes labels and dates only.
+- **Limits:** this protects against a leaked database or backup. Someone who controls the Supabase account can still read the vault, because the key is there, so don't store bank passwords. If `VAULT_MASTER_KEY` is lost, the vault can't be read: keep a copy in your password manager (see `docs/RESTORE.md`).
+- **Tests:** `tests/unit/vault.test.ts` covers encryption, tampering, PINs and validation. `tests/db/vault.test.sql` checks that app users can't reach the secret tables and covers the PIN pause.
 
 ## Reminders (push)
 

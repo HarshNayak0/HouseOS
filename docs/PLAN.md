@@ -1,6 +1,6 @@
 # Veedu — build plan (for approval)
 
-Status: **approved 2026-11-23** (with the Instagram change below). Phases 0–5 done; phase 6 done; phase 7a (bedroom + backyard) built, needs its SQL. Next: phase 7b (closet vault). Live at https://veeduos.vercel.app
+Status: **approved 2026-11-23** (with the Instagram change below). Phases 0–5 done; phase 6 done; phase 7a done; phase 7b (closet vault) built, needs its SQL and VAULT_MASTER_KEY. Next: phase 8. Live at https://veeduos.vercel.app
 Based on `SPEC.md` (v3) and `reference/veedu-prototype.html`.
 
 People: **Harsh** (owner) and **Prerna Nair** (partner).

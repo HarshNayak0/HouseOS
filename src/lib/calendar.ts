@@ -14,6 +14,7 @@ import { torontoDayKey, torontoToUtc } from "@/lib/time";
 import type { Chore } from "@/panels/Chores";
 import type { DateIdea } from "@/panels/Dates";
 import type { Trip } from "@/panels/Trips";
+import type { VaultItemRow } from "@/lib/vault";
 import type { Task } from "@/panels/Tasks";
 
 export interface CalendarAccount extends BaseRow {
@@ -102,7 +103,7 @@ export function milestoneLabel(kind: Milestone["kind"], years: number) {
   return kind === "birthday" ? `turning ${years}` : kind === "anniversary" ? `${ordinal(years)} anniversary` : `${years} years`;
 }
 
-export type ItemKind = "event" | "task" | "chore" | "milestone" | "trip" | "date";
+export type ItemKind = "event" | "task" | "chore" | "milestone" | "trip" | "date" | "renewal";
 export interface CalItem {
   key: string;
   kind: ItemKind;
@@ -134,6 +135,7 @@ export function useCalendarItems() {
   const milestones = useRows<Milestone>("milestones");
   const trips = useRows<Trip>("trips");
   const dates = useRows<DateIdea>("date_ideas");
+  const vault = useRows<VaultItemRow>("vault_items");
 
   const visible = live(sources.data).filter((s) => s.visible);
   const srcById = new Map(visible.map((s) => [s.id, s]));
@@ -182,6 +184,13 @@ export function useCalendarItems() {
     if (d.status !== "planned" || !d.planned_for || d.calendar_event_id) continue;
     const start = new Date(d.planned_for);
     items.push({ key: `date:${d.id}`, kind: "date", title: `💛 ${d.title}`, start, end: start, allDay: false, color: colorOf(null), who: null, day: torontoDayKey(start), sub: "Date night" });
+  }
+  // lease and insurance renewals (labels and dates only; the details stay locked in the vault)
+  for (const v of live(vault.data)) {
+    if (!v.renewal_date) continue;
+    const [y, mo, d] = v.renewal_date.split("-").map(Number);
+    const start = torontoToUtc(y, mo, d, 0, 0);
+    items.push({ key: `r:${v.id}`, kind: "renewal", title: `🔔 ${v.label}`, start, end: start, allDay: true, color: "#B8893B", who: null, day: v.renewal_date, sub: "Renewal" });
   }
   items.sort((a, b) => Number(b.allDay) - Number(a.allDay) || a.start.getTime() - b.start.getTime());
   return { items, sources: live(sources.data), loading: events.isLoading || sources.isLoading };
