@@ -80,7 +80,11 @@ export function TripsRoom() {
         <EmptyState
           title="Plan your first trip"
           hint="Each trip gets its own page: a day-by-day plan, bookings with confirmation numbers, a shared packing list and a budget. The boat lantern lights up when one is a month away."
-          example={<TripCardView t={{ title: "Montréal long weekend", destination: "Montréal", starts_on: addDays(today, 21), ends_on: addDays(today, 24) }} today={today} />}
+          example={
+            <div className="rounded-lg border border-[#e6d9c2] bg-white p-2.5">
+              <TripCardView t={{ title: "Montréal long weekend", destination: "Montréal", starts_on: addDays(today, 21), ends_on: addDays(today, 24) }} today={today} />
+            </div>
+          }
         />
       )}
       {upcoming.map((t) => (
@@ -181,12 +185,69 @@ function NewTrip({ onCreated }: { onCreated: (id: string) => void }) {
 
 type TripTab = "plan" | "bookings" | "packing" | "budget";
 
+/** Rename a trip or change its dates. Moving the start date can carry the day-by-day plan along with it. */
+function EditTrip({ trip, onDone }: { trip: Trip; onDone: () => void }) {
+  const m = useRowMutation<Trip>("trips");
+  const days = useRowMutation<TripDay>("trip_days");
+  const { data: dayRows } = useRows<TripDay>("trip_days");
+  const [title, setTitle] = useState(trip.title);
+  const [dest, setDest] = useState(trip.destination ?? "");
+  const [from, setFrom] = useState(trip.starts_on);
+  const [to, setTo] = useState(trip.ends_on);
+  const [shift, setShift] = useState(true);
+  const plan = live(dayRows).filter((d) => d.trip_id === trip.id);
+  const delta = from ? daysBetween(trip.starts_on, from) : 0;
+  const valid = title.trim() && from && to && to >= from;
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!valid) return;
+    m.update(trip.id, { title: title.trim().slice(0, 120), destination: dest.trim().slice(0, 120) || null, starts_on: from, ends_on: to });
+    if (delta && shift) for (const d of plan) days.update(d.id, { day_date: addDays(d.day_date, delta) });
+    toast("Trip updated");
+    onDone();
+  };
+  // keep the same trip length when only the start moves
+  const moveStart = (v: string) => {
+    if (v && from && to) setTo(addDays(v, daysBetween(from, to)));
+    setFrom(v);
+  };
+  return (
+    <form onSubmit={submit} className="mb-1 grid grid-cols-2 gap-1.5">
+      <input className={`${inputCls} col-span-2`} aria-label="Trip name" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <input className={`${inputCls} col-span-2`} placeholder="Where (optional)" aria-label="Destination" maxLength={120} value={dest} onChange={(e) => setDest(e.target.value)} />
+      <label className="text-[11px] font-bold text-ink-2">
+        From
+        <input type="date" className={`${smallSelect} w-full`} value={from} onChange={(e) => moveStart(e.target.value)} />
+      </label>
+      <label className="text-[11px] font-bold text-ink-2">
+        To
+        <input type="date" className={`${smallSelect} w-full`} value={to} min={from} onChange={(e) => setTo(e.target.value)} />
+      </label>
+      {delta !== 0 && plan.length > 0 && (
+        <label className="col-span-2 flex min-h-11 items-center gap-2 text-xs">
+          <input type="checkbox" checked={shift} onChange={(e) => setShift(e.target.checked)} className="h-[18px] w-[18px] accent-red-oxide" />
+          Move the day-by-day plan {Math.abs(delta)} day{Math.abs(delta) > 1 ? "s" : ""} {delta > 0 ? "later" : "earlier"} too
+        </label>
+      )}
+      <div className="col-span-2 flex gap-2">
+        <button type="submit" className={addBtn} disabled={!valid}>
+          Save
+        </button>
+        <button type="button" className={linkBtn} onClick={onDone}>
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function TripPage({ trip, onBack }: { trip: Trip; onBack: () => void }) {
   const { me } = usePeople();
   const m = useRowMutation<Trip>("trips");
   const { data: cover } = useSignedUrl(FILES_BUCKET, trip.cover_path);
   const [tab, setTab] = useState<TripTab>("plan");
   const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
   const today = torontoDayKey(new Date());
   const setCover = async (f: File | undefined) => {
     if (!f || !me) return;
@@ -207,8 +268,13 @@ function TripPage({ trip, onBack }: { trip: Trip; onBack: () => void }) {
         {/* eslint-disable-next-line @next/next/no-img-element -- signed URL to a private photo */}
         {cover && <img src={cover} alt="" className="h-32 w-full object-cover" />}
         <div className="p-2.5">
-          <TripCardView t={trip} today={today} />
+          {editing ? <EditTrip trip={trip} onDone={() => setEditing(false)} /> : <TripCardView t={trip} today={today} />}
           <div className="flex flex-wrap gap-3">
+            {!editing && (
+              <button type="button" className={linkBtn} onClick={() => setEditing(true)}>
+                Edit name and dates
+              </button>
+            )}
             <label className={`${linkBtn} flex cursor-pointer items-center`}>
               {busy ? "Uploading…" : cover ? "Change cover photo" : "Add a cover photo"}
               <input type="file" accept="image/*" className="sr-only" onChange={(e) => setCover(e.target.files?.[0])} />
@@ -254,6 +320,7 @@ function Itinerary({ trip }: { trip: Trip }) {
   const items = live(rows).filter((d) => d.trip_id === trip.id);
   const n = Math.min(daysBetween(trip.starts_on, trip.ends_on), 60);
   const days = Array.from({ length: n + 1 }, (_, i) => addDays(trip.starts_on, i));
+  const outside = items.filter((x) => x.day_date < trip.starts_on || x.day_date > days[days.length - 1]);
   return (
     <Sec title="Day by day">
       {days.map((day, i) => {
@@ -276,6 +343,29 @@ function Itinerary({ trip }: { trip: Trip }) {
           </div>
         );
       })}
+      {outside.length > 0 && (
+        <div className="mb-3 rounded-lg border border-dashed border-[#e7b2a8] bg-[#fdf0ec] p-2">
+          <p className="m-0 text-xs font-bold text-urgent">Not on the trip&apos;s dates any more</p>
+          {outside.map((x) => (
+            <div key={x.id} className="flex items-center gap-2 py-1 text-sm">
+              <span className="flex-1">
+                {x.title} <span className="text-[11px] text-ink-2">· was {dayLabel(x.day_date)}</span>
+              </span>
+              <select aria-label={`Move ${x.title} to a day`} className={smallSelect} value="" onChange={(e) => e.target.value && m.update(x.id, { day_date: e.target.value })}>
+                <option value="">Move to…</option>
+                {days.map((d, i) => (
+                  <option key={d} value={d}>
+                    Day {i + 1} · {dayLabel(d)}
+                  </option>
+                ))}
+              </select>
+              <IconButton label={`Delete ${x.title}`} onClick={() => m.remove(x.id, `Removed “${x.title}”`)}>
+                <TrashIcon />
+              </IconButton>
+            </div>
+          ))}
+        </div>
+      )}
       <Trash rows={trashed(rows).filter((d) => d.trip_id === trip.id)} label={(r) => r.title} onRestore={m.restore} />
     </Sec>
   );

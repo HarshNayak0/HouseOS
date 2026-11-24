@@ -155,7 +155,11 @@ export function DateIdeas() {
               <EmptyState
                 title="Start a wishlist"
                 hint="Jot down dates you'd like to go on. “Surprise me” draws one from the brass uruli when you can't decide."
-                example={<IdeaCardView d={{ title: "Sunset walk at the Bluffs", cost: 0, duration: "evening", tags: ["Outdoors"], location: "Scarborough Bluffs" }} />}
+                example={
+                  <div className="rounded-lg border border-[#e6d9c2] bg-white p-2.5">
+                    <IdeaCardView d={{ title: "Sunset walk at the Bluffs", cost: 0, duration: "evening", tags: ["Outdoors"], location: "Scarborough Bluffs" }} />
+                  </div>
+                }
               />
             )}
             {wishlist.map((d) => (

@@ -89,7 +89,7 @@ export function EmptyState({ title, hint, example }: { title: string; hint: stri
       <p className="mt-1 mb-0 text-ink-2">{hint}</p>
       {example && (
         <div className="mt-2 opacity-70" aria-label="Example">
-          <span className="text-[10px] font-bold tracking-wider text-ink-2 uppercase">Example</span>
+          <span className="mb-1 block text-[10px] font-bold tracking-wider text-ink-2 uppercase">Example</span>
           {example}
         </div>
       )}

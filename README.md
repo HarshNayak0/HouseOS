@@ -180,6 +180,7 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
   - **We did it** saves a memory with a photo and a note. Each of you rates it 1–5, and only you can change your own rating.
   - The petti lamp glows when a date is planned this week (Mon–Sun, Toronto time).
 - **Backyard: trips.** Each trip has its own page:
+  - a name, destination and dates you can edit later (moving the start date can move the day-by-day plan with it)
   - a cover photo
   - a day-by-day plan
   - bookings with confirmation numbers (tap to copy), cost and an attached ticket (PDF up to 5 MB, or a photo)

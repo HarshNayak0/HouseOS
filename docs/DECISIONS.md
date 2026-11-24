@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Trips can be renamed and re-dated; moving the start keeps the trip length and (optionally) shifts the day-by-day plan; plan items left outside the dates are listed to move or delete | Plans change; nothing is silently hidden |
 | 2026-11-24 | Phase 7 split: 7a bedroom + backyard, 7b closet vault | The vault needs its own key setup and careful testing; keeping it separate keeps each test pass small |
 | 2026-11-24 | Date ratings: one row per person, insert-then-update, editable only by its owner (RLS on `member_id`) | Same pattern as recipe ratings; each of you keeps your own score |
 | 2026-11-24 | Scheduled dates go to the Us calendar (else your primary); the app stores the event id and deletes it when unplanned | One source of truth on Google; no duplicate in the app calendar |
