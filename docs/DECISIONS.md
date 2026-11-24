@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Effects always use a block body `useEffect(() => { … })`, never a one-line arrow | Newer Chrome returns a Promise from `scrollIntoView`; a one-line arrow handed it to React as a "cleanup", which crashed the vault form on close |
 | 2026-11-24 | Vault: AES-256-GCM envelope encryption in a `vault` Edge Function; per-item data key wrapped by `VAULT_MASTER_KEY` (function secret only); item id as associated data | SPEC §4.6; protects against a leaked database/backup at $0. Not end-to-end (the server can decrypt): documented, no bank passwords |
 | 2026-11-24 | Split tables: `vault_items` (label, section, renewal date; household can read) and `vault_secrets` (ciphertext; no app access at all) | Renewals feed the calendar, dashboard and bell while locked; secrets never reach the browser except through an unlocked session |
 | 2026-11-24 | Unlock = passkey (@simplewebauthn, rpID = the app's host) or own 6-digit PIN; token in memory only, 5 min idle / 30 min max | SPEC; nothing left behind in storage on a shared or lost phone |

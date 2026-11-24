@@ -513,7 +513,10 @@ function ItemForm({ section, item, onClose, onSaved }: { section: VaultSection; 
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" }), []);
+  useEffect(() => {
+    // braces matter: newer Chrome returns a Promise here, and React would treat it as a cleanup function
+    void ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, []);
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
