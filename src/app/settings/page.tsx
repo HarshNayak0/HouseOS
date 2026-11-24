@@ -2,11 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { authEnabled } from "@/lib/supabase/config";
 import { AccountSettings, Section } from "./AccountSettings";
-import { MotionSetting, ViewSetting } from "./SettingsView";
+import { EveningSetting, MotionSetting, ViewSetting } from "./SettingsView";
 
 export const metadata: Metadata = { title: "Settings · Veedu" };
-
-const LATER = [["Evening mode: automatic at Toronto sunset", 8]] as const;
 
 export default function SettingsPage() {
   return (
@@ -24,16 +22,9 @@ export default function SettingsPage() {
             <div className="mt-4">
               <MotionSetting />
             </div>
-          </Section>
-          <Section title="Coming later">
-            <ul className="m-0 list-none p-0">
-              {LATER.map(([label, phase]) => (
-                <li key={label} className="flex justify-between gap-3 border-b border-dashed border-[#e6d9c2] py-2 text-sm last:border-b-0">
-                  <span>{label}</span>
-                  <span className="flex-none text-ink-2">phase {phase}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-4">
+              <EveningSetting />
+            </div>
           </Section>
           <p className="mt-6 text-xs text-ink-2">Version {process.env.NEXT_PUBLIC_BUILD}</p>
         </div>

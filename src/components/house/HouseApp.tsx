@@ -9,6 +9,8 @@ import { ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/scene/config";
 import { useHousehold, useRoomLabels } from "@/lib/household";
 import { authEnabled } from "@/lib/supabase/config";
 import { useIndicatorState } from "@/lib/lists/indicators";
+import { useNow } from "@/lib/lists/useNow";
+import { isEvening } from "@/lib/sun";
 import {
   chooseView,
   effectiveReducedMotion,
@@ -16,6 +18,9 @@ import {
   readViewPref,
   writeViewPref,
   type ViewPref,
+  readEveningPref,
+  resolveEvening,
+  type EveningPref,
 } from "@/lib/view-pref";
 import { FloorPlan } from "./FloorPlan";
 import { RoomPanel } from "./RoomPanel";
@@ -46,7 +51,11 @@ export function HouseApp() {
   const [progress, setProgress] = useState({ done: 0, total: 1, label: "Loading the 3D engine…" });
   const [ctrl, setCtrl] = useState<HouseController | null>(null);
   const [mode, setMode] = useState<"outside" | "inside">(room ? "inside" : "outside");
-  const [evening, setEvening] = useState(false);
+  const [eveningPref, setEveningPref] = useState<EveningPref>("auto");
+  const [eveningOverride, setEveningOverride] = useState<{ value: boolean; auto: boolean } | null>(null);
+  const nowMs = useNow();
+  const autoEvening = isEvening(new Date(nowMs));
+  const evening = resolveEvening(eveningPref, autoEvening, eveningOverride);
   const [slowPrompt, setSlowPrompt] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [initialRoom] = useState(room);
@@ -58,6 +67,7 @@ export function HouseApp() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-only detection
     setReducedMotion(rm);
     setView(v);
+    setEveningPref(readEveningPref());
   }, []);
 
   // Room changes use the History API directly: the camera starts flying immediately and no
@@ -228,7 +238,7 @@ export function HouseApp() {
               <HeaderButton primary={mode === "outside"} onClick={toggleMode} disabled={!ctrl}>
                 {mode === "outside" ? "Step inside" : "View outside"}
               </HeaderButton>
-              <HeaderButton onClick={() => setEvening((e) => !e)} disabled={!ctrl} aria-pressed={evening}>
+              <HeaderButton onClick={() => setEveningOverride({ value: !evening, auto: autoEvening })} disabled={!ctrl} aria-pressed={evening}>
                 {evening ? "Daytime" : "Evening"}
               </HeaderButton>
             </>

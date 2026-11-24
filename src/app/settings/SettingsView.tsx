@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sunTimes } from "@/lib/sun";
+import { formatToronto, torontoDayKey } from "@/lib/time";
 import {
   prefersReducedMotion,
+  readEveningPref,
   readMotionPref,
+  writeEveningPref,
   readViewPref,
   writeMotionPref,
   writeViewPref,
+  type EveningPref,
   type MotionPref,
   type ViewPref,
 } from "@/lib/view-pref";
@@ -80,6 +85,45 @@ export function MotionSetting() {
             onChange={() => choose(o.v)}
             className="mt-1 h-[18px] w-[18px] accent-red-oxide"
           />
+          <span>
+            <span className="block text-sm font-bold">{o.label}</span>
+            <span className="block text-xs text-ink-2">{o.hint}</span>
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  );
+}
+
+export function EveningSetting() {
+  const [pref, setPref] = useState<EveningPref>("auto");
+  const [today, setToday] = useState<{ sunset: string; sunrise: string } | null>(null);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reads per-device storage after mount
+    setPref(readEveningPref());
+    const s = sunTimes(torontoDayKey(new Date()));
+    const t = (d: Date) => formatToronto(d, { hour: "numeric", minute: "2-digit" });
+    setToday({ sunset: t(s.sunset), sunrise: t(s.sunrise) });
+  }, []);
+  const choose = (v: EveningPref) => {
+    setPref(v);
+    writeEveningPref(v);
+  };
+  const opts: { v: EveningPref; label: string; hint: string }[] = [
+    {
+      v: "auto",
+      label: "Automatic, at Toronto sunset",
+      hint: today ? `The lamps light at dusk (sunset today ${today.sunset}) and go out after sunrise (${today.sunrise})` : "The lamps light at dusk and go out after sunrise",
+    },
+    { v: "day", label: "Always daytime", hint: "The Evening button still switches it for a while" },
+    { v: "evening", label: "Always evening", hint: "Dusk sky and lit lamps all day" },
+  ];
+  return (
+    <fieldset className="m-0 border-0 p-0">
+      <legend className="mb-2 font-bold">Evening mode</legend>
+      {opts.map((o) => (
+        <label key={o.v} className="flex min-h-11 cursor-pointer items-start gap-3 py-1.5">
+          <input type="radio" name="evening" checked={pref === o.v} onChange={() => choose(o.v)} className="mt-1 h-[18px] w-[18px] accent-red-oxide" />
           <span>
             <span className="block text-sm font-bold">{o.label}</span>
             <span className="block text-xs text-ink-2">{o.hint}</span>

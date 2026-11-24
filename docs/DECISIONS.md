@@ -4,6 +4,10 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Phase 8 split: 8a roof opening + automatic evening, 8b usage monitor, audits, tests, README | Two smaller things to test |
+| 2026-11-24 | Courtyard opening: both tiers clipped around the nadumuttam, inner roof sloping into it, jaali light-well sides; mukhappu shortened to a front pediment (z 1.95–2.65) | SPEC asks for the opening; in the prototype the gable and the tall upper tier sit right over the courtyard, so a true funnel roof would need a ~75° pitch. This keeps the street silhouette |
+| 2026-11-24 | Sunset computed on the device (NOAA formulas, Toronto lat/lng), evening = sunset −20 min to sunrise +15 min | No API, $0, works offline; accurate to about 2 minutes |
+| 2026-11-24 | Evening preference per device (auto / day / evening); header button override lapses at the next sunrise or sunset | Matches the other display settings; auto never gets stuck |
 | 2026-11-24 | Effects always use a block body `useEffect(() => { … })`, never a one-line arrow | Newer Chrome returns a Promise from `scrollIntoView`; a one-line arrow handed it to React as a "cleanup", which crashed the vault form on close |
 | 2026-11-24 | Vault: AES-256-GCM envelope encryption in a `vault` Edge Function; per-item data key wrapped by `VAULT_MASTER_KEY` (function secret only); item id as associated data | SPEC §4.6; protects against a leaked database/backup at $0. Not end-to-end (the server can decrypt): documented, no bank passwords |
 | 2026-11-24 | Split tables: `vault_items` (label, section, renewal date; household can read) and `vault_secrets` (ciphertext; no app access at all) | Renewals feed the calendar, dashboard and bell while locked; secrets never reach the browser except through an unlocked session |

@@ -74,3 +74,34 @@ export function writeMotionPref(v: MotionPref) {
 export function effectiveReducedMotion(): boolean {
   return prefersReducedMotion() && readMotionPref() !== "always";
 }
+
+/** Evening mode: follow Toronto's sunset (default), or stay day / evening. */
+export type EveningPref = "auto" | "day" | "evening";
+const EVENING_KEY = "veedu.evening";
+
+export function readEveningPref(): EveningPref {
+  try {
+    const v = localStorage.getItem(EVENING_KEY);
+    return v === "day" || v === "evening" ? v : "auto";
+  } catch {
+    return "auto";
+  }
+}
+
+export function writeEveningPref(v: EveningPref) {
+  try {
+    if (v === "auto") localStorage.removeItem(EVENING_KEY);
+    else localStorage.setItem(EVENING_KEY, v);
+  } catch {
+    /* ignore */
+  }
+}
+
+/**
+ * Whether the house shows evening. A tap on the header button overrides it for this visit; in automatic
+ * mode the override lapses at the next sunset or sunrise, so the house never gets stuck in the wrong mode.
+ */
+export function resolveEvening(pref: EveningPref, autoNow: boolean, override: { value: boolean; auto: boolean } | null): boolean {
+  if (override && (pref !== "auto" || override.auto === autoNow)) return override.value;
+  return pref === "day" ? false : pref === "evening" ? true : autoNow;
+}

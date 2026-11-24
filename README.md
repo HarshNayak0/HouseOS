@@ -7,7 +7,7 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 7 built (bedroom, backyard, coat-closet vault). Next: phase 8, polish and launch checks.
+**Status:** phase 8a built (courtyard roof opening, automatic evening mode). Next: phase 8b, the usage monitor, audits, tests and the final README.
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -140,6 +140,10 @@ The house is ported from `reference/veedu-prototype.html` into `src/scene/`:
 | `HouseCanvas.tsx` | The React Three Fiber canvas, loaded lazily |
 
 Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `/closet`, `/backyard` open the house inside with that room's panel. `/settings` has the 3D / 2D choice.
+
+**Roof opening:** both roof tiers are cut open above the nadumuttam. An inner roof slopes down into the courtyard, the opening has carved jaali sides like the gable (a timber light-well), and the mukhappu gable is a pediment on the front slope so the opening behind it stays clear. The code is in `house/roof.ts`: the roof faces are clipped around the opening, so there's no extra geometry.
+
+**Evening mode:** automatic by default. It turns on 20 minutes before sunset and off 15 minutes after sunrise in Toronto. Sunrise and sunset are computed on the device (`src/lib/sun.ts`, NOAA formulas, about ±2 minutes, no API). The **Evening/Daytime** button overrides it until the next sunset or sunrise. Settings → This device offers Automatic, Always daytime or Always evening.
 
 **2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
 
