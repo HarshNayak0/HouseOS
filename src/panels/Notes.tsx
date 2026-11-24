@@ -75,11 +75,11 @@ export function NotesBoard() {
           return (
             <div key={n.id} className="relative flex min-h-[84px] flex-col rounded p-2.5 text-[13px] shadow-[0_2px_4px_rgba(59,36,24,0.12)]" style={{ background: NOTE_COLORS[n.color] }}>
               {n.pinned && (
-                <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-red-oxide shadow" aria-label="Pinned" />
+                <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-red-oxide shadow" role="img" aria-label="Pinned" />
               )}
               <p className="m-0 grow break-words whitespace-pre-wrap">{n.body}</p>
               <PartnerHint id={n.id} />
-              <div className="mt-1.5 flex items-center justify-between text-[10.5px] font-bold text-[rgba(59,36,24,0.6)]">
+              <div className="mt-1.5 flex items-center justify-between text-[10.5px] font-bold text-[rgba(59,36,24,0.85)]">
                 <span>
                   {author?.display_name ?? "?"} · {formatToronto(n.created_at, { month: "short", day: "numeric" })}
                   {n.expires_at ? " · fades soon" : ""}

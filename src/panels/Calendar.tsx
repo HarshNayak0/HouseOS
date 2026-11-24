@@ -140,9 +140,9 @@ function MonthGrid({
   const days = Array.from({ length: 42 }, (_, i) => addDays(start, i));
   const weeks = days[35].slice(0, 7) === cursor.slice(0, 7) ? 6 : 5;
   return (
-    <div className="grid grid-cols-7 gap-1" role="grid" aria-label="Month">
+    <div className="grid grid-cols-7 gap-1" role="group" aria-label="Month">
       {DOW.map((d) => (
-        <div key={d} className="text-center text-[10px] font-bold text-ink-2" role="columnheader">
+        <div key={d} className="text-center text-[10px] font-bold text-ink-2" aria-hidden="true">
           {d.slice(0, 2)}
         </div>
       ))}
@@ -153,11 +153,10 @@ function MonthGrid({
           <button
             key={d}
             type="button"
-            role="gridcell"
-            aria-selected={d === selected}
+            aria-pressed={d === selected}
             aria-label={`${label(d, { weekday: "long", month: "long", day: "numeric" })}, ${list.length} item${list.length === 1 ? "" : "s"}`}
             onClick={() => onPick(d)}
-            className={`flex min-h-11 flex-col items-center rounded-lg border pt-1 text-[12px] ${d === selected ? "border-teak bg-[#f3ead9]" : d === today ? "border-red-oxide bg-[#fdf3ef]" : "border-[#eee3cf] bg-white"} ${inMonth ? "" : "opacity-40"}`}
+            className={`flex min-h-11 flex-col items-center rounded-lg border pt-1 text-[12px] ${d === selected ? "border-teak bg-[#f3ead9]" : d === today ? "border-red-oxide bg-[#fdf3ef]" : "border-[#eee3cf] bg-white"} ${inMonth ? "" : "border-transparent bg-transparent text-ink-2"}`}
           >
             <b className={d === today ? "text-red-oxide" : ""}>{Number(d.slice(8))}</b>
             <span className="mt-0.5 flex min-h-[6px] flex-wrap justify-center gap-[2px] px-0.5">

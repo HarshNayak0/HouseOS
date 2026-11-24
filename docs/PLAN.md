@@ -1,6 +1,6 @@
 # Veedu — build plan (for approval)
 
-Status: **approved 2026-11-23** (with the Instagram change below). Phases 0–5 done; phase 6 done; phase 7a done; phase 7 done; phase 8a (roof opening, auto evening) built. Next: phase 8b. Live at https://veeduos.vercel.app
+Status: **approved 2026-11-23** (with the Instagram change below). Phases 0–5 done; phase 6 done; phase 7a done; all phases (0–8) built. Phase 8b: usage monitor, accessibility and performance audits, Playwright suite, final README. Live at https://veeduos.vercel.app
 Based on `SPEC.md` (v3) and `reference/veedu-prototype.html`.
 
 People: **Harsh** (owner) and **Prerna Nair** (partner).
@@ -444,17 +444,17 @@ Limits are the published free tiers as I understand them; I'll re-check each one
 | Service | Free tier (approx.) | Our expected use | Cost |
 |---|---|---|---|
 | Vercel Hobby | 100 GB transfer/mo, generous function invocations; non-commercial only | 2 people; maybe 1–2 GB/mo | $0 |
-| Supabase Free | 500 MB DB, 1 GB storage, 5 GB egress, 500k Edge Function calls/mo, 200 realtime connections; pauses after 7 days idle | DB < 50 MB; storage ~200–400 MB in year one (WebP photos ≈200 KB); ~9k function calls/mo for reminders now (every 5 min), ~15k once calendar sync is added | $0 |
-| GitHub (private repo) | 2,000 Actions minutes/mo; 500 MB artifact storage | CI ~3–5 min/push (Playwright browser cached), imports ~3–4 min each, backups ~2 min/wk, keep-alive <1 min. Estimate 600–1,000 min/mo | $0 |
-| Google Cloud (OAuth + Calendar API) | Calendar API quota is free (1M queries/day); unverified app OK up to 100 users | 2 users, a few thousand calls/day | $0 |
-| Google AI Studio (Gemini Flash, free tier) | rate-limited (per-minute and per-day caps) | ≤20 imports/day, usually a handful/week | $0 |
-| Groq (Whisper, free tier) | daily request + audio-seconds caps | ~1–3 min of audio per reel | $0 |
-| whisper.cpp in Actions (fallback) | Actions minutes only | only if Groq fails | $0 |
+| Supabase Free | 500 MB DB, 1 GB storage, 5 GB egress, 500k Edge Function calls/mo, 200 realtime connections; pauses after 7 days idle (keep-alive prevents it) | DB < 50 MB; storage ~200–400 MB in year one (WebP photos ≈200 KB, PDFs ≤5 MB); ~9k reminder calls + ~3k calendar syncs/mo plus a few hundred app calls. The usage monitor warns at 70% of DB and storage | $0 |
+| GitHub (private repo) | 2,000 Actions minutes/mo; 500 MB artifact storage | CI ~3–6 min/push, backups ~2 min/wk, keep-alive <1 min, function deploys <1 min. Estimate 300–800 min/mo | $0 |
+| Google Cloud (OAuth + Calendar API) | Calendar API quota is free (1M queries/day); sign-in and Calendar for up to 100 users without verification | 2 users, a few thousand calls/day | $0 |
+| Google AI Studio (Gemini Flash, free tier) | rate-limited (per-minute and per-day caps) | ≤20 imports/day (app limit), usually a handful/week; recipe text and screenshots only | $0 |
 | Web Push (VAPID) | browser push services are free | a few pushes/day | $0 |
+| Passkeys (WebAuthn), sunset times, encryption | built into browsers / computed locally | — | $0 |
 | Fonts (Google Fonts via `next/font`) | free, self-hosted | — | $0 |
-| Domain | `*.vercel.app` | — | $0 |
-| Optional: Claude Haiku | pay-per-use, hard spend cap | **off** unless you add a key | $0 (≤$2 if enabled) |
+| Domain | `veeduos.vercel.app` | — | $0 |
 | **Total** | | | **$0/month** |
+
+Dropped along the way (no longer used): Groq speech-to-text, whisper.cpp in Actions and video uploads (phase 6 decision), and the optional paid Claude Haiku fallback.
 
 Biggest pressure point: **GitHub Actions minutes** on a private repo. I'll keep CI lean (cached deps and browsers, Playwright only on `main` and PRs, skip CI for docs-only commits) and report minutes in the usage monitor.
 

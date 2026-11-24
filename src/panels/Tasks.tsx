@@ -186,7 +186,7 @@ function TaskRow({ task: t, subs, m }: { task: Task; subs: Subtask[]; m: ReturnT
   const doneSubs = subs.filter((s) => s.done).length;
   return (
     <div className="border-b border-dashed border-[#e6d9c2] last:border-b-0">
-      <div className={`flex min-h-11 items-center gap-2.5 py-1.5 text-sm ${t.completed_at ? "[&_.title]:text-[#a8998a] [&_.title]:line-through" : ""}`}>
+      <div className={`flex min-h-11 items-center gap-2.5 py-1.5 text-sm ${t.completed_at ? "[&_.title]:text-[#7a6b5d] [&_.title]:line-through" : ""}`}>
         <Check checked={!!t.completed_at} onChange={(v) => m.update(t.id, { completed_at: v ? new Date().toISOString() : null })} label={`Done: ${t.title}`} />
         <button type="button" className="min-h-9 min-w-0 grow text-left" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           <span className="title">

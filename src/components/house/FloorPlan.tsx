@@ -48,9 +48,6 @@ export function FloorPlan({
             const r = rect(ROOMS[id].bounds);
             const label = labels[id];
             const on = selected === id;
-            const [x0, x1, z0, z1] = ROOMS[id].bounds;
-            // In 2D the backyard label sits below the pond so it doesn't cover it.
-            const [lx, lz] = isYardLabel(id) ? [0.25, -8.4] : (ROOMS[id].labelAt ?? [(x0 + x1) / 2, (z0 + z1) / 2]);
             const isYard = id === "backyard";
             return (
               <Link
@@ -58,7 +55,9 @@ export function FloorPlan({
                 href={roomPath(id)}
                 scroll={false}
                 onClick={onRoomLink(id)}
-                aria-label={`${label.name}${label.ml ? ` (${label.ml})` : ""}: ${label.feature}`}
+                // the spoken name starts with exactly the visible words (WCAG 2.5.3, label in name), then the room's purpose.
+                // The Malayalam name is decorative for screen readers (an English voice can't read it), so it's hidden from them.
+                aria-label={`${label.name}: ${label.feature}`}
                 aria-current={on ? "page" : undefined}
                 className="group outline-none"
               >
@@ -80,20 +79,31 @@ export function FloorPlan({
                     <circle cx={-4.6} cy={-10.2} r={0.85} fill="#18303a" stroke="#a5552f" strokeWidth={0.15} />
                   </>
                 )}
-                <g transform={`translate(${lx} ${lz})`} pointerEvents="none">
-                  <rect x={-1.55} y={label.ml ? -0.62 : -0.4} width={3.1} height={label.ml ? 1.2 : 0.78} rx={0.39} fill="#fbf8f2" stroke="#B8893B" strokeWidth={0.05} />
-                  <text y={label.ml ? -0.07 : 0.14} textAnchor="middle" fontSize={0.4} fontWeight={700} fill="#3b2418">
-                    {label.name}
-                  </text>
-                  {label.ml && (
-                    <text y={0.4} textAnchor="middle" fontSize={0.32} fill="#7a6250" fontFamily="var(--font-manjari)">
-                      {label.ml}
-                    </text>
-                  )}
-                </g>
               </Link>
             );
           })}
+          {/* room name pills, drawn above the map; the links above carry the spoken names */}
+          <g aria-hidden="true" pointerEvents="none">
+            {order.map((id) => {
+              const label = labels[id];
+              const [x0, x1, z0, z1] = ROOMS[id].bounds;
+              // in 2D the backyard label sits below the pond so it doesn't cover it
+              const [lx, lz] = isYardLabel(id) ? [0.25, -8.4] : (ROOMS[id].labelAt ?? [(x0 + x1) / 2, (z0 + z1) / 2]);
+              return (
+                <g key={id} transform={`translate(${lx} ${lz})`}>
+                      <rect x={-1.55} y={label.ml ? -0.62 : -0.4} width={3.1} height={label.ml ? 1.2 : 0.78} rx={0.39} fill="#fbf8f2" stroke="#B8893B" strokeWidth={0.05} />
+                      <text y={label.ml ? -0.07 : 0.14} textAnchor="middle" fontSize={0.4} fontWeight={700} fill="#3b2418">
+                        {label.name}
+                      </text>
+                      {label.ml && (
+                        <text y={0.4} textAnchor="middle" fontSize={0.32} fill="#7a6250" fontFamily="var(--font-manjari)" lang="ml">
+                          {label.ml}
+                        </text>
+                      )}
+                </g>
+              );
+            })}
+          </g>
           {/* main door */}
           <rect x={-0.4} y={2.9} width={1.3} height={0.2} fill="#7a4527" />
         </svg>

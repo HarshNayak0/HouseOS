@@ -3,7 +3,8 @@ import { z } from "zod";
 /**
  * Environment variables, validated with Zod.
  * Only NEXT_PUBLIC_* values may reach the browser. Everything else is server-only.
- * Values are optional until the phase that needs them; see .env.example.
+ * These are the Vercel (web app) variables; see .env.example. The Edge Functions' secrets (Google, Gemini,
+ * vault key) live in GitHub Secrets and are copied to Supabase by the deploy workflow, never to Vercel.
  */
 const publicSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url().optional(),
@@ -12,16 +13,8 @@ const publicSchema = z.object({
 });
 
 const serverSchema = publicSchema.extend({
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
   VAPID_PRIVATE_KEY: z.string().min(1).optional(),
   VAPID_SUBJECT: z.string().min(1).optional(),
-  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
-  TOKEN_ENCRYPTION_KEY: z.string().min(1).optional(),
-  VAULT_MASTER_KEY: z.string().min(1).optional(),
-  GEMINI_API_KEY: z.string().min(1).optional(),
-  GROQ_API_KEY: z.string().min(1).optional(),
-  GITHUB_DISPATCH_TOKEN: z.string().min(1).optional(),
 });
 
 export const publicEnv = publicSchema.parse({

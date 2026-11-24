@@ -33,6 +33,8 @@ function Scene(props: HouseCanvasProps) {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const ctrlRef = useRef<HouseController | null>(null);
   const fps = useRef({ start: 0, frames: 0, reported: false });
+  // ?debug=1: a small on-screen meter (frame rate, draw calls, triangles) for checking a real phone
+  const meter = useRef<{ el: HTMLDivElement; t: number; frames: number } | null>(null);
   const propsRef = useRef(props);
   useEffect(() => {
     propsRef.current = props;
@@ -76,11 +78,19 @@ function Scene(props: HouseCanvasProps) {
             dir: () => camera.getWorldDirection(new THREE.Vector3()).toArray().map((v) => +v.toFixed(2)),
             info: () => ({ calls: gl.info.render.calls, triangles: gl.info.render.triangles, textures: gl.info.memory.textures }),
           };
+          const el = document.createElement("div");
+          el.setAttribute("aria-hidden", "true");
+          el.style.cssText =
+            "position:fixed;left:8px;bottom:calc(8px + env(safe-area-inset-bottom));z-index:60;padding:4px 8px;border-radius:6px;background:rgba(31,22,17,.85);color:#fbf8f2;font:12px/1.3 ui-monospace,monospace;pointer-events:none";
+          document.body.appendChild(el);
+          meter.current = { el, t: performance.now(), frames: 0 };
         }
       })
       .catch((e) => propsRef.current.onError(e));
     return () => {
       cancelled = true;
+      meter.current?.el.remove();
+      meter.current = null;
       ctrlRef.current?.dispose();
       ctrlRef.current = null;
       modelPromise?.then((m) => scene.remove(m.root));
@@ -121,6 +131,15 @@ function Scene(props: HouseCanvasProps) {
     if (!ctrl) return;
     const now = performance.now();
     ctrl.update(now);
+    const m = meter.current;
+    if (m) {
+      m.frames++;
+      if (now - m.t >= 1000) {
+        m.el.textContent = `${Math.round((m.frames * 1000) / (now - m.t))} fps · ${gl.info.render.calls} calls · ${Math.round(gl.info.render.triangles / 1000)}k tris · dpr ${gl.getPixelRatio()}`;
+        m.t = now;
+        m.frames = 0;
+      }
+    }
     const f = fps.current;
     if (!f.reported) {
       // Skip the first second (one-off start-up work), then measure for 3 s.

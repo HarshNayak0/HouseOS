@@ -7,7 +7,19 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 **Live:** https://veeduos.vercel.app
 
-**Status:** phase 8a built (courtyard roof opening, automatic evening mode). Next: phase 8b, the usage monitor, audits, tests and the final README.
+**Status:** complete. All phases (0–8) of `SPEC.md` are built and live.
+
+**Rooms:**
+
+| Room | What's there |
+|---|---|
+| Living room | Dashboard (time-sensitive strip, today, next 7 days, activity) and notes board |
+| Kitchen | Shopping list and recipe box with imports |
+| Office | Google Calendar (both of you plus "Us"), tasks, milestones |
+| Wash area | Chores |
+| Bedroom | Date ideas and memories |
+| Backyard | Trips |
+| Coat closet | Encrypted home vault |
 
 **Running cost:** $0/month. Everything runs on free tiers; see the cost table in `docs/PLAN.md` §4.
 
@@ -15,9 +27,9 @@ A shared household app for Harsh and Prerna, navigated as a 3D model of a tradit
 
 ## Stack
 
-Next.js 16 (App Router) · TypeScript strict · Tailwind CSS 4 · Zod · Vitest · Playwright. Coming in later phases: React Three Fiber (3D), Supabase (database, auth, realtime, storage, cron), TanStack Query, Framer Motion, Web Push.
+Next.js 16 (App Router) · TypeScript strict · Tailwind CSS 4 · React Three Fiber 9 + three.js · TanStack Query 5 · Zod 4 · Supabase (Postgres with row-level security, Google sign-in, Realtime, Storage, `pg_cron`, Edge Functions) · Web Push · @simplewebauthn (passkeys) · Vitest · Playwright + axe.
 
-Hosting: Vercel Hobby (free `*.vercel.app` domain). Background jobs: Supabase `pg_cron` + Edge Functions. Heavy jobs (recipe video processing, backups): GitHub Actions.
+Hosting: Vercel Hobby (free `veeduos.vercel.app`). Background jobs: Supabase `pg_cron` calling Edge Functions (`notify`, `calendar`, `recipes`, `vault`). Backups and keep-alive: GitHub Actions.
 
 ## Set up from zero
 
@@ -29,8 +41,7 @@ Hosting: Vercel Hobby (free `*.vercel.app` domain). Background jobs: Supabase `p
 | Vercel (Hobby) | phase 0 | Sign up **with GitHub**. Hosts the app. |
 | Supabase | phase 2 | Database, sign-in, realtime, file storage. |
 | Google Cloud | phase 2 | Google sign-in and Calendar API. |
-| Google AI Studio | phase 6 | Gemini free tier, for turning recipe text into a recipe card. |
-| Groq | phase 6 | Free speech-to-text for recipe videos. |
+| Google AI Studio | phase 6 | Gemini free tier, for turning recipe text and screenshots into a recipe card (optional). |
 
 ### 2. Deploy to Vercel
 
@@ -43,7 +54,11 @@ Hosting: Vercel Hobby (free `*.vercel.app` domain). Background jobs: Supabase `p
 
 1. **Supabase project:** supabase.com → New project (Free, region Canada Central). Save the database password in a password manager.
 2. **Database:** SQL Editor → run each file in `supabase/migrations/` in name order (oldest first).
-3. **Google OAuth client:** Google Cloud console → new project → Google Auth Platform → External app, **published (In production)** → Web client with origin `https://veeduos.vercel.app` and redirect URI `https://<project-ref>.supabase.co/auth/v1/callback`.
+3. **Google OAuth client:** Google Cloud console → new project → Google Auth Platform → External app, **published (In production)** → Web client with origin `https://veeduos.vercel.app` and **both** redirect URIs:
+   - `https://<project-ref>.supabase.co/auth/v1/callback` (sign-in)
+   - `https://<project-ref>.supabase.co/functions/v1/calendar/callback` (calendar, phase 4)
+
+   If one is missing, Google shows `Error 400: redirect_uri_mismatch`.
 4. **Supabase Auth:** Providers → Google → paste the client ID and secret. URL Configuration → Site URL `https://veeduos.vercel.app`; Redirect URLs `https://veeduos.vercel.app/**`, `https://*-harsh-s-vercel.vercel.app/**`, `http://localhost:3000/**`.
 5. **Vercel env vars:** `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:` + your email), then redeploy.
 
@@ -53,7 +68,7 @@ Until the Supabase variables are set, the app runs without accounts (this is als
 
 ### 4. Environment variables
 
-See [`.env.example`](.env.example) for the full list and which phase needs each one. Values go in **Vercel → Project → Settings → Environment Variables** (and `.env.local` if you run the app on your own computer). Never commit real values.
+The web app needs only the five Vercel variables above; [`.env.example`](.env.example) lists them. Values go in **Vercel → Project → Settings → Environment Variables** (and `.env.local` if you run the app on your own computer). Everything secret for the Edge Functions is a GitHub Secret (below), copied to Supabase by the deploy workflow. Never commit real values.
 
 ### 5. GitHub Secrets (for the scheduled workflows)
 
@@ -70,6 +85,7 @@ See [`.env.example`](.env.example) for the full list and which phase needs each 
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | deploy functions | Google Cloud → Google Auth Platform → Clients → your web client |
 | `TOKEN_ENCRYPTION_KEY` | deploy functions | 32 random bytes, base64 (`openssl rand -base64 32`). Encrypts Google refresh tokens. |
 | `GEMINI_API_KEY` | deploy functions | Google AI Studio → Get API key (free tier). Optional: without it, captions are read by simple rules. |
+| `VAULT_MASTER_KEY` | deploy functions | 32 random bytes, base64. Encrypts the closet vault. **Save a copy in your password manager and never change it**: without it the vault can't be read. |
 
 Until these exist, the keep-alive and backup workflows run but skip themselves with a notice.
 
@@ -104,24 +120,31 @@ Then open http://localhost:3000.
 
 | Workflow | When | What |
 |---|---|---|
-| **CI** | every push / PR (not docs-only) | lint, typecheck, unit tests, build, Playwright |
+| **CI** | every push / PR (not docs-only) | lint, typecheck, unit tests, database (RLS) tests, build, Playwright with accessibility checks |
+| **Deploy Supabase functions** | when `supabase/functions/` changes on `main`, or by hand | sets the function secrets and deploys `notify`, `calendar`, `recipes`, `vault` |
 | **Supabase keep-alive** | every 3 days | runs a tiny query so the free project never pauses |
 | **Weekly backup** | Sundays | encrypted database dump kept 56 days; see [`docs/RESTORE.md`](docs/RESTORE.md) |
+
+Scheduled inside Supabase (`pg_cron`): reminders every 5 minutes, calendar sync every 15 minutes, trash clean-up hourly, usage snapshot monthly.
 
 ## Project layout
 
 ```
-src/app/        routes (pages + API)
-src/lib/        shared helpers: env (Zod-validated), time (UTC ↔ Toronto)
-tests/unit/     Vitest
-tests/e2e/      Playwright
-supabase/       migrations and (later) Edge Functions
-.github/        workflows
-docs/           plan, decisions, restore guide
-reference/      the original 3D prototype
+src/app/                 routes: house (/[[...room]]), settings, sign-in, onboarding, invite, API (export, push test, health)
+src/components/house/    HouseApp (header, 3D/2D switch), RoomPanel (the sheet), FloorPlan (2D)
+src/panels/              one file per feature: ShoppingList, Recipes, Tasks, Chores, Notes, Calendar,
+                         Milestones, Dashboard, Dates, Trips, Vault
+src/scene/               the 3D house (see below)
+src/lib/                 data layer (lists/rows.ts: live rows + realtime), time, sun, calendar, vault, usage, …
+supabase/migrations/     database schema + RLS, applied in name order
+supabase/functions/      Edge Functions: notify, calendar, recipes, vault (+ _shared)
+tests/unit/              Vitest (pure logic, crypto, recurrence, time zones)
+tests/db/                SQL tests of the RLS rules, run on a throwaway Postgres
+tests/e2e/               Playwright: house, floor plan, settings, accessibility (axe)
+.github/workflows/       CI, deploy functions, keep-alive, backup
+docs/                    plan + cost table, decisions log, restore guide, brand
+reference/               the original 3D prototype
 ```
-
-The full planned structure is in `docs/PLAN.md` §2.
 
 ## The 3D house
 
@@ -139,7 +162,7 @@ The house is ported from `reference/veedu-prototype.html` into `src/scene/`:
 | `merge.ts` | Merges static meshes per material to cut draw calls |
 | `HouseCanvas.tsx` | The React Three Fiber canvas, loaded lazily |
 
-Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `/closet`, `/backyard` open the house inside with that room's panel. `/settings` has the 3D / 2D choice.
+Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `/closet`, `/backyard` open the house inside with that room's panel. `/settings` has the display choices (3D/2D, camera animations, evening mode) and everything account-related.
 
 **Roof opening:** both roof tiers are cut open above the nadumuttam. An inner roof slopes down into the courtyard, the opening has carved jaali sides like the gable (a timber light-well), and the mukhappu gable is a pediment on the front slope so the opening behind it stays clear. The code is in `house/roof.ts`: the roof faces are clipped around the opening, so there's no extra geometry.
 
@@ -147,7 +170,39 @@ Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `
 
 **2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
 
-**Performance check:** add `?debug=1` to the URL, then run `__veedu.info()` in the browser console for draw calls and triangles.
+**Performance check:** open `https://veeduos.vercel.app/?debug=1`. A small meter in the bottom-left corner shows frame rate, draw calls, triangles and pixel ratio, which works on a phone too. On a computer, `__veedu.info()` in the console gives the same numbers.
+
+## Performance and accessibility
+
+Measured at the end of phase 8 against the budgets in `SPEC.md` §3.4:
+
+| Budget | Target | Measured |
+|---|---|---|
+| Initial JS on the house route | < ~350 KB gzipped, 3D lazy-loaded | 319 KB (the 3D scene loads after, behind the progress screen) |
+| Draw calls / triangles | instance or merge repeats | ~200 calls, ~56k triangles (static meshes merged per material) |
+| Device pixel ratio | ≤ 2 | capped at 2 |
+| Shadows | one map ≤ 2048 px, 1024 on phones | yes |
+| Frame rate | 60 target, ≥ 30 on a mid-range phone | check on your phone with `?debug=1` (meter in the corner). Below ~28 fps in the first seconds, the app offers the 2D plan |
+
+Accessibility (WCAG 2.1 AA):
+- **Automated checks:** axe runs in CI on the sign-in, legal and settings pages, the 2D floor plan and the room panels (`tests/e2e/a11y.spec.ts`). The signed-in panels were also audited with test data and are clean.
+- **Fixes from the audit:**
+  - Person chips pick white or dark text for contrast.
+  - Done items and the calendar's other-month days are darker.
+  - The calendar is a labelled group of buttons, not a half-built grid.
+  - Room links and day buttons say what they show.
+- **Keyboard:**
+  - Every room is reachable by Tab.
+  - Enter opens a room and Escape closes it. Focus moves into the panel and shows a brass ring.
+  - Most tap targets are 44 px; none in the panels is under 38 px (checked by the test suite).
+- **3D view:** the 2D floor plan is its accessible twin. It's used automatically when reduce motion is on (unless Settings says otherwise) or WebGL is missing.
+
+## Usage monitor
+
+The free limits that could run out are Supabase's 500 MB database and 1 GB file storage. A `pg_cron` job records both on the 1st of each month (`usage_snapshots`).
+- Settings → **Free-plan usage** shows the bars and has **Check now** (at most every 10 minutes).
+- At 70% of either limit, a warning appears on the living-room dashboard.
+- Data transfer, function calls and Vercel bandwidth aren't visible from inside the database. They're far below their limits at two users; the Supabase and Vercel dashboards show them under **Usage**.
 
 ## Google Calendar
 
@@ -226,7 +281,7 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
 
 `pg_cron` calls it every 5 minutes, and a trigger calls it straight after a note is posted. Each reminder is claimed in the database before it's sent, so nothing goes out twice. Quiet hours hold reminders until they end, and each person can switch the three kinds off in Settings. The rules live in `logic.ts` and are unit-tested in `tests/unit/reminders.test.ts`.
 
-The **Deploy Supabase functions** workflow deploys the function and its VAPID secrets whenever `supabase/functions/` changes on `main`. You can also run it by hand from the Actions tab.
+The **Deploy Supabase functions** workflow deploys all four functions and their secrets whenever `supabase/functions/` changes on `main`. You can also run it by hand from the Actions tab.
 
 ## Accounts
 
@@ -234,7 +289,8 @@ The **Deploy Supabase functions** workflow deploys the function and its VAPID se
 - **Household:** exactly two people. The first person creates it at `/onboarding`; Settings → Household makes a single-use invite link (48 h) for the second person.
 - **Database:** `supabase/migrations/`. Every table has row-level security limited to your own household; invites, joining and leaving go through checked database functions.
 - **Notifications:** Web Push with VAPID keys. `public/sw.js` shows them; Settings → Notifications turns them on per device and sends a test. iPhone needs Veedu added to the Home Screen first (iOS 16.4+); the app shows a guide.
-- **Export:** Settings → Your data downloads everything as JSON.
+- **Export:** Settings → Your data downloads everything as JSON. The vault's encrypted details are left out; only its labels and dates are included.
+- **Privacy:** vault, notes and calendar data are never sent to an AI provider. Gemini only ever sees recipe text and screenshots you import.
 
 ## Logo
 

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { authEnabled } from "@/lib/supabase/config";
 import { AccountSettings, Section } from "./AccountSettings";
 import { EveningSetting, MotionSetting, ViewSetting } from "./SettingsView";
+import { UsageSettings } from "./UsageSettings";
 
 export const metadata: Metadata = { title: "Settings · Veedu" };
 
@@ -26,6 +27,7 @@ export default function SettingsPage() {
               <EveningSetting />
             </div>
           </Section>
+          {authEnabled && <UsageSettings />}
           <p className="mt-6 text-xs text-ink-2">Version {process.env.NEXT_PUBLIC_BUILD}</p>
         </div>
       </section>

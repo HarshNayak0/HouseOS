@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PERSON_COLORS } from "@/lib/colors";
+import { PERSON_COLORS, textOn } from "@/lib/colors";
 import { useHousehold, type Member } from "@/lib/household";
 import { usePartnerEdited } from "@/lib/lists/presence";
 import { dismiss, useToasts } from "@/lib/lists/toast";
@@ -44,8 +44,8 @@ export function WhoChip({ memberId, small }: { memberId: string | null | undefin
   const color = m ? PERSON_COLORS[m.color].hex : PERSON_COLORS[bothColor].hex;
   return (
     <span
-      className={`flex-none rounded-full font-bold text-white ${small ? "px-1.5 py-px text-[10px]" : "px-[7px] py-[2px] text-[11px]"}`}
-      style={{ background: color }}
+      className={`flex-none rounded-full font-bold ${small ? "px-1.5 py-px text-[10px]" : "px-[7px] py-[2px] text-[11px]"}`}
+      style={{ background: color, color: textOn(color) }}
     >
       {m ? m.display_name : "Both"}
     </span>
@@ -62,7 +62,7 @@ export function PartnerHint({ id }: { id: string }) {
 
 export function Row({ done, children, className = "" }: { done?: boolean; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`flex min-h-11 items-center gap-2.5 border-b border-dashed border-[#e6d9c2] py-1.5 text-sm last:border-b-0 ${done ? "[&_.grow]:text-[#a8998a] [&_.grow]:line-through" : ""} ${className}`}>
+    <div className={`flex min-h-11 items-center gap-2.5 border-b border-dashed border-[#e6d9c2] py-1.5 text-sm last:border-b-0 ${done ? "[&_.grow]:text-[#7a6b5d] [&_.grow]:line-through" : ""} ${className}`}>
       {children}
     </div>
   );

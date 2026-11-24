@@ -4,6 +4,10 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-24 | Usage monitor: monthly `pg_cron` snapshot of DB size and Storage bytes, "Check now" (≤ every 10 min), dashboard warning at 70% | SPEC §5; the two hard Supabase limits are the only ones visible from SQL. Egress, function calls and Vercel are checked in their own dashboards |
+| 2026-11-24 | Accessibility: axe (WCAG 2.1 A/AA) in the Playwright suite; floor-plan name pills moved out of the links (spoken name = English name + purpose) | Fixes "label in name"; an English screen reader can't read the Malayalam names anyway |
+| 2026-11-24 | Person chips choose white or dark text by contrast; muted text darkened to #7a6b5d | Lotus and brass chips with white text failed AA |
+| 2026-11-24 | `.env.example` and `env.ts` list only Vercel's variables; function secrets are GitHub Secrets only | Groq and the dispatch token were dropped in phase 6; fewer places for secrets |
 | 2026-11-24 | Phase 8 split: 8a roof opening + automatic evening, 8b usage monitor, audits, tests, README | Two smaller things to test |
 | 2026-11-24 | Courtyard opening: both tiers clipped around the nadumuttam, inner roof sloping into it, jaali light-well sides; mukhappu shortened to a front pediment (z 1.95–2.65) | SPEC asks for the opening; in the prototype the gable and the tall upper tier sit right over the courtyard, so a true funnel roof would need a ~75° pitch. This keeps the street silhouette |
 | 2026-11-24 | Sunset computed on the device (NOAA formulas, Toronto lat/lng), evening = sunset −20 min to sunrise +15 min | No API, $0, works offline; accurate to about 2 minutes |

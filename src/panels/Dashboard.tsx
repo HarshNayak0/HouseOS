@@ -8,6 +8,8 @@ import { dueLabel, dueState } from "@/lib/lists/dates";
 import { live, useRows } from "@/lib/lists/rows";
 import { useNow } from "@/lib/lists/useNow";
 import { goToRoom } from "@/lib/nav";
+import { useUsage, usageWarnings } from "@/lib/usage";
+import Link from "next/link";
 import { formatToronto, torontoDayKey } from "@/lib/time";
 import type { Chore } from "./Chores";
 import type { Task } from "./Tasks";
@@ -42,6 +44,8 @@ export function Dashboard() {
   const { data: packing } = useRows<PackingItem>("packing_items");
   const { data: vault } = useRows<VaultItemRow>("vault_items");
   const { items } = useCalendarItems();
+  const { data: usage } = useUsage();
+  const warnings = usageWarnings(usage);
 
   const urgent = buildUrgent({
     now,
@@ -80,6 +84,14 @@ export function Dashboard() {
 
   return (
     <>
+      {warnings.length > 0 && (
+        <div role="alert" className="mb-3 rounded-lg border border-[#e7b2a8] bg-[#fdf0ec] p-2.5 text-sm text-urgent">
+          ⚠️ Veedu is using {warnings.map((w) => `${Math.round(w.share * 100)}% of its free ${w.what}`).join(" and ")}.{" "}
+          <Link href="/settings" className="font-bold underline">
+            See usage
+          </Link>
+        </div>
+      )}
       <Sec title="Time-sensitive">
         {urgent.length === 0 ? (
           <p className="m-0 text-sm text-ink-2">Nothing pressing. Enjoy the quiet 🌿</p>
@@ -116,12 +128,16 @@ export function Dashboard() {
                 key={d}
                 type="button"
                 aria-pressed={sel}
-                aria-label={`${dayLabel(d, { weekday: "long", month: "long", day: "numeric" })}: ${list.length} item${list.length === 1 ? "" : "s"}`}
                 onClick={() => setPicked(d)}
                 className={`flex min-h-14 flex-col items-center rounded-lg border px-0.5 py-1.5 text-[11px] text-ink-2 ${d === today ? "border-red-oxide bg-[#fdf3ef]" : sel ? "border-teak bg-[#f3ead9]" : "border-[#e6d9c2] bg-white"}`}
               >
-                {dayLabel(d, { weekday: "short" })}
-                <b className="text-[15px] text-ink">{Number(d.slice(8))}</b>
+                <span aria-hidden="true">{dayLabel(d, { weekday: "short" })}</span>
+                <b className="text-[15px] text-ink" aria-hidden="true">
+                  {Number(d.slice(8))}
+                </b>
+                <span className="sr-only">
+                  {dayLabel(d, { weekday: "long", month: "long", day: "numeric" })}, {list.length} item{list.length === 1 ? "" : "s"}
+                </span>
                 <span className="mt-1 flex min-h-[6px] justify-center gap-[3px]">
                   {colors.map((c) => (
                     <i key={c} className="block h-[6px] w-[6px] rounded-full" style={{ background: c }} />
