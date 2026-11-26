@@ -23,6 +23,7 @@ import {
   type EveningPref,
 } from "@/lib/view-pref";
 import { FloorPlan } from "./FloorPlan";
+import { QuickAdd } from "./QuickAdd";
 import { RoomPanel } from "./RoomPanel";
 
 const HouseCanvas = dynamic(() => import("@/scene/HouseCanvas"), { ssr: false });
@@ -256,7 +257,7 @@ export function HouseApp() {
       {hint && (
         <div
           role="status"
-          className="pointer-events-none fixed bottom-5 left-1/2 z-[4] -translate-x-1/2 rounded-full bg-[rgba(59,36,24,0.84)] px-4 py-2 text-[13px] whitespace-nowrap text-[#fbf8f2] max-[720px]:bottom-3.5"
+          className="pointer-events-none fixed bottom-5 left-1/2 z-[4] -translate-x-1/2 rounded-full bg-[rgba(59,36,24,0.84)] px-4 py-2 text-[13px] whitespace-nowrap text-[#fbf8f2] max-[720px]:bottom-[max(24px,calc(env(safe-area-inset-bottom)+16px))] max-[720px]:left-3 max-[720px]:max-w-[calc(100%-96px)] max-[720px]:translate-x-0 max-[720px]:rounded-2xl max-[720px]:whitespace-normal"
         >
           {hint}
         </div>
@@ -279,6 +280,7 @@ export function HouseApp() {
       )}
 
       <RoomPanel room={room} onClose={closePanel} labels={labels} />
+      {household.data?.me && !room && <QuickAdd />}
 
       {view !== "2d" && !ctrl && !loadError && <LoadingScreen {...progress} />}
     </div>

@@ -183,6 +183,8 @@ const KINDS: [string, string][] = [
   ["chores", "Chores when they're due"],
   ["tasks", "Tasks when they're due"],
   ["milestones", "Birthdays and anniversaries coming up"],
+  ["store", "When your partner is at the store, and what they add while you are"],
+  ["digest", "Morning summary at 8 am: your day, plus what's coming up"],
 ];
 
 function Notifications({ me }: { me: Member }) {

@@ -276,6 +276,25 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
 - **Limits:** this protects against a leaked database or backup. Someone who controls the Supabase account can still read the vault, because the key is there, so don't store bank passwords. If `VAULT_MASTER_KEY` is lost, the vault can't be read: keep a copy in your password manager (see `docs/RESTORE.md`).
 - **Tests:** `tests/unit/vault.test.ts` covers encryption, tampering, PINs and validation. `tests/db/vault.test.sql` checks that app users can't reach the secret tables and covers the PIN pause.
 
+## Everyday shortcuts
+
+- **Quick add (+):** the round button at the bottom right of the house fans out into Grocery, Task and Note. Each takes one line and saves straight to the list, the office or the notes board (same duplicate rules as the shopping list). It's hidden while a room's panel is open, since each room has its own add box.
+- **"I'm at the store"** (kitchen):
+  - Pick the store and your partner gets a push ("Harsh is at No Frills, anything to add?") plus a banner in the kitchen.
+  - Anything they add while you shop is pushed to you, so your phone can stay in your pocket.
+  - A visit ends with **Done shopping** or after 2 hours. It's in `store_visits`; database triggers wake `notify` straight away.
+- **Staples** (kitchen): the list already counts how often each item is added. Once something has been bought three or more times at least two days apart, Veedu knows its usual gap. When that gap has passed, the item shows under **Probably running low**, with **Add all**. The logic is in `src/lib/staples.ts`, unit-tested.
+- **When are we both free** (bedroom, when scheduling a date):
+  - Suggests up to six slots in the next two weeks: weekday evenings 6–10:30 pm, weekend days 10 am–10:30 pm.
+  - Avoids both calendars' timed events with half an hour either side, other planned dates and trip days. All-day events don't block.
+  - Fits the date's length: a "weekend" needs Saturday and Sunday both clear.
+  - If one calendar isn't connected, it says so. The logic is in `src/lib/freeTime.ts`.
+- **Morning digest:**
+  - At 8 am Toronto, `notify` sends each person one push about their own day: their calendar events and the Us calendar, chores and tasks due today or overdue, and tonight's date.
+  - It adds what's coming up: birthdays today, trips in the next 14 days, renewals in the next 7.
+  - Nothing is sent on an empty day. A digest held up by quiet hours is dropped after 11 am, and `digest_log` makes sure it goes out once.
+  - Settings → Notifications has switches for the digest and the store alerts.
+
 ## Reminders (push)
 
 `supabase/functions/notify` is a Supabase Edge Function that sends:

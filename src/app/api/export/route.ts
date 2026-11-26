@@ -33,6 +33,7 @@ const TABLES = [
   "trip_expenses",
   "packing_items",
   "packing_templates",
+  "store_visits",
   "vault_items", // labels and renewal dates only: the encrypted details never leave the vault function
 ] as const;
 

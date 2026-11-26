@@ -68,7 +68,7 @@ export interface Milestone {
   deleted_at: string | null;
 }
 
-export type Kind = "chores" | "tasks" | "notes" | "milestones";
+export type Kind = "chores" | "tasks" | "notes" | "milestones" | "store" | "digest";
 export interface Message {
   memberId: string;
   kind: Kind;
@@ -81,7 +81,10 @@ export interface Message {
 export type Claim =
   | { table: "chores" | "tasks"; id: string; due: string }
   | { table: "notes"; id: string }
-  | { table: "milestones"; id: string; key: string; reminded: string[] };
+  | { table: "milestones"; id: string; key: string; reminded: string[] }
+  | { table: "store_visits"; id: string }
+  | { table: "store_items"; id: string; prev: string | null; until: string }
+  | { table: "digest_log"; memberId: string; day: string };
 export interface Plan {
   claim: Claim;
   messages: Message[];
@@ -115,6 +118,56 @@ export function torontoAt(day: string, hh: number, mm: number): Date {
 
 const timeLabel = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d);
 
+export interface StoreVisit {
+  id: string;
+  household_id: string;
+  member_id: string;
+  store: string;
+  started_at: string;
+  ended_at: string | null;
+  notified_at: string | null;
+  items_pushed_until: string | null;
+}
+export interface ShoppingItem {
+  household_id: string;
+  name: string;
+  store: string;
+  created_by: string | null;
+  created_at: string;
+  checked_at: string | null;
+  deleted_at: string | null;
+}
+export interface CalendarSource {
+  id: string;
+  member_id: string;
+  is_us_calendar: boolean;
+  visible: boolean;
+}
+export interface CalendarEvent {
+  source_id: string;
+  google_event_id: string;
+  summary: string | null;
+  starts_at: string;
+  ends_at: string;
+  all_day: boolean;
+}
+export interface PlannedDate {
+  household_id: string;
+  title: string;
+  planned_for: string;
+}
+export interface Trip {
+  household_id: string;
+  title: string;
+  starts_on: string;
+  ends_on: string;
+}
+export interface Renewal {
+  household_id: string;
+  label: string;
+  renewal_date: string;
+}
+
 export interface Input {
   now: Date;
   members: Member[];
@@ -123,6 +176,10 @@ export interface Input {
   tasks: Task[];
   notes: Note[];
   milestones?: Milestone[];
+  visits?: StoreVisit[];
+  shopping?: ShoppingItem[];
+  /** for the morning digest */
+  digest?: { sources: CalendarSource[]; events: CalendarEvent[]; dates: PlannedDate[]; trips: Trip[]; renewals: Renewal[]; sentToday: string[] };
 }
 
 /**
@@ -142,7 +199,8 @@ function deliverable(ids: string[], kind: Kind, prefs: Prefs[], hhmm: string): s
 
 const MAX_LATE_MS = 2 * 86_400_000; // don't send reminders for things more than 2 days stale
 
-export function planReminders({ now, members, prefs, chores, tasks, notes, milestones = [] }: Input): Plan[] {
+export function planReminders(input: Input): Plan[] {
+  const { now, members, prefs, chores, tasks, notes, milestones = [] } = input;
   const { hhmm, day: today } = parts(now);
   const plans: Plan[] = [];
   const everyone = (household: string) => members.filter((m) => m.household_id === household).map((m) => m.id);
@@ -226,6 +284,129 @@ export function planReminders({ now, members, prefs, chores, tasks, notes, miles
         })),
       });
     }
+  }
+  plans.push(...planStore(input, hhmm), ...planDigests(input, hhmm, today));
+  return plans;
+}
+
+const VISIT_MS = 2 * 3_600_000; // a visit ends by itself after 2 hours
+const list = (names: string[], max = 4) => (names.length > max ? `${names.slice(0, max).join(", ")} and ${names.length - max} more` : names.join(", "));
+
+/** "Harsh is at No Frills" to the other person, and items they add while he's there back to him. */
+function planStore({ now, members, prefs, visits = [], shopping = [] }: Input, hhmm: string): Plan[] {
+  const plans: Plan[] = [];
+  const byId = (id: string) => members.find((m) => m.id === id);
+  for (const v of visits) {
+    const started = Date.parse(v.started_at);
+    if (v.ended_at || now.getTime() - started > VISIT_MS) continue;
+    const shopper = byId(v.member_id);
+    if (!shopper) continue;
+    const others = members.filter((m) => m.household_id === v.household_id && m.id !== v.member_id).map((m) => m.id);
+    // 1. tell the others (only while it's fresh: a stale "at the store" is just noise)
+    if (!v.notified_at && now.getTime() - started < 30 * 60_000) {
+      const to = deliverable(others, "store", prefs, hhmm);
+      if (to?.length) {
+        const open = shopping.filter((i) => i.household_id === v.household_id && !i.checked_at && !i.deleted_at).length;
+        plans.push({
+          claim: { table: "store_visits", id: v.id },
+          messages: to.map((memberId) => ({
+            memberId,
+            kind: "store",
+            title: `${shopper.display_name} is at ${v.store} 🛒`,
+            body: `Anything to add? ${open ? `${open} item${open > 1 ? "s" : ""} on the list so far.` : "The list is empty."}`,
+            url: "/kitchen",
+            tag: `store-${v.id}`,
+          })),
+        });
+      }
+    }
+    // 2. new items from the others, pushed to the shopper
+    const since = Date.parse(v.items_pushed_until ?? v.started_at);
+    const added = shopping
+      .filter((i) => i.household_id === v.household_id && !i.deleted_at && !i.checked_at && i.created_by !== shopper.user_id && Date.parse(i.created_at) > since)
+      .sort((a, b) => Date.parse(a.created_at) - Date.parse(b.created_at));
+    if (added.length) {
+      const to = deliverable([shopper.id], "store", prefs, hhmm);
+      if (to?.length) {
+        const who = members.find((m) => m.user_id === added[0].created_by)?.display_name ?? "Someone";
+        plans.push({
+          claim: { table: "store_items", id: v.id, prev: v.items_pushed_until, until: added[added.length - 1].created_at },
+          messages: [{ memberId: shopper.id, kind: "store", title: `${who} added to the list`, body: list(added.map((i) => i.name)), url: "/kitchen", tag: `store-items-${v.id}` }],
+        });
+      }
+    }
+  }
+  return plans;
+}
+
+/** The morning digest: one push per person from 8 am (Toronto), only if there's something to say. */
+export function digestFor(memberId: string, input: Input, today: string): { title: string; body: string } | null {
+  const { members, chores, tasks, milestones = [], digest } = input;
+  if (!digest) return null;
+  const me = members.find((m) => m.id === memberId);
+  if (!me) return null;
+  const tomorrow = new Date(Date.parse(today + "T12:00:00Z") + 86_400_000).toISOString().slice(0, 10);
+  const dayStart = torontoAt(today, 0, 0).getTime(),
+    dayEnd = torontoAt(tomorrow, 0, 0).getTime();
+  const isToday = (iso: string) => Date.parse(iso) >= dayStart && Date.parse(iso) < dayEnd;
+  const todayItems: string[] = [];
+
+  // calendar: my calendars and the shared "Us" one (each event once)
+  const mine = new Map(digest.sources.filter((s) => s.visible && (s.member_id === memberId || s.is_us_calendar)).map((s) => [s.id, s]));
+  const seen = new Set<string>();
+  const events = digest.events
+    .filter((e) => mine.has(e.source_id) && Date.parse(e.starts_at) < dayEnd && Date.parse(e.ends_at) > dayStart)
+    .sort((a, b) => Number(b.all_day) - Number(a.all_day) || Date.parse(a.starts_at) - Date.parse(b.starts_at));
+  for (const e of events) {
+    const key = mine.get(e.source_id)!.is_us_calendar ? `us:${e.google_event_id}` : `${e.source_id}:${e.google_event_id}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    todayItems.push(e.all_day ? (e.summary ?? "Busy") : `${e.summary ?? "Busy"} ${timeLabel(new Date(e.starts_at))}`);
+  }
+  for (const d of digest.dates) if (d.household_id === me.household_id && isToday(d.planned_for)) todayItems.push(`💛 ${d.title} ${timeLabel(new Date(d.planned_for))}`);
+  // chores and tasks that are mine (or anyone's) and due today or overdue
+  for (const c of chores)
+    if (c.household_id === me.household_id && !c.paused && !c.deleted_at && Date.parse(c.next_due_at) < dayEnd && (!c.assignee_id || c.assignee_id === memberId))
+      todayItems.push(c.title);
+  for (const t of tasks) {
+    if (t.household_id !== me.household_id || !t.due_at || t.completed_at || t.deleted_at || Date.parse(t.due_at) >= dayEnd) continue;
+    const forMe = t.visibility === "personal" ? t.created_by === me.user_id : !t.assignee_id || t.assignee_id === memberId;
+    if (forMe) todayItems.push(t.title);
+  }
+  // coming up
+  const soon: string[] = [];
+  for (const ms of milestones) {
+    if (ms.deleted_at || ms.household_id !== me.household_id) continue;
+    const n = nextMilestone(ms.base_date, today);
+    if (n.daysAway === 0 && !(ms.kind === "birthday" && ms.person_id === memberId)) soon.push(`🎉 ${ms.title} today`);
+  }
+  for (const t of digest.trips) {
+    if (t.household_id !== me.household_id) continue;
+    const away = Math.round((Date.parse(t.starts_on + "T12:00:00Z") - Date.parse(today + "T12:00:00Z")) / 86_400_000);
+    if (away >= 1 && away <= 14) soon.push(`🧳 ${t.title} ${away === 1 ? "tomorrow" : `in ${away} days`}`);
+  }
+  for (const r of digest.renewals) {
+    if (r.household_id !== me.household_id) continue;
+    const away = Math.round((Date.parse(r.renewal_date + "T12:00:00Z") - Date.parse(today + "T12:00:00Z")) / 86_400_000);
+    if (away >= 0 && away <= 7) soon.push(`🔔 ${r.label} renews ${away === 0 ? "today" : away === 1 ? "tomorrow" : `in ${away} days`}`);
+  }
+  if (!todayItems.length && !soon.length) return null;
+  const n = todayItems.length;
+  const title = n ? `Good morning, ${me.display_name} ☀️ ${n} thing${n > 1 ? "s" : ""} today` : `Good morning, ${me.display_name} ☀️`;
+  const body = [todayItems.length ? list(todayItems, 5) : "", soon.join(" · ")].filter(Boolean).join("\n");
+  return { title, body: body.length > 230 ? body.slice(0, 227) + "…" : body };
+}
+
+function planDigests(input: Input, hhmm: string, today: string): Plan[] {
+  if (!input.digest || hhmm < "08:00" || hhmm >= "11:00") return []; // a digest after 11 am would be stale
+  const plans: Plan[] = [];
+  for (const m of input.members) {
+    if (input.digest.sentToday.includes(m.id)) continue;
+    const to = deliverable([m.id], "digest", input.prefs, hhmm);
+    if (!to?.length) continue;
+    const d = digestFor(m.id, input, today);
+    if (!d) continue;
+    plans.push({ claim: { table: "digest_log", memberId: m.id, day: today }, messages: [{ memberId: m.id, kind: "digest", title: d.title, body: d.body, url: "/living", tag: `digest-${today}` }] });
   }
   return plans;
 }

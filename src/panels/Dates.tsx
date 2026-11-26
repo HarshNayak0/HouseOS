@@ -2,13 +2,15 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
-import { callCalendar, type CalendarSource } from "@/lib/calendar";
+import { callCalendar, type CachedEvent, type CalendarSource } from "@/lib/calendar";
+import { busyFromEvents, findFreeSlots } from "@/lib/freeTime";
+import type { Trip } from "./Trips";
 import { dueLabel } from "@/lib/lists/dates";
 import { insertOrUpdate, live, rowsKey, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
 import { FILES_BUCKET, uploadHouseholdFile, useSignedUrl } from "@/lib/files";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { formatDay, formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
+import { addDays, formatDay, formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
 import { EmptyState, Sec, Stars, Tabs, Trash, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 export interface DateIdea extends BaseRow {
@@ -43,6 +45,8 @@ interface DateRating {
 const COST = ["Free", "$", "$$", "$$$", "$$$$"];
 const DURATION: Record<DateIdea["duration"], string> = { quick: "An hour or so", evening: "An evening", "half-day": "Half a day", "full-day": "A full day", weekend: "A weekend" };
 type Tab = "wishlist" | "planned" | "memories";
+/** How long each kind of date takes, for the calendar event and for finding a free slot. */
+const HOURS: Record<DateIdea["duration"], number> = { quick: 1, evening: 3, "half-day": 4, "full-day": 8, weekend: 24 };
 
 export function DateIdeas() {
   const { data: rows, isLoading } = useRows<DateIdea>("date_ideas");
@@ -322,7 +326,7 @@ function ScheduleSheet({ d, onClose }: { d: DateIdea; onClose: () => void }) {
     const [y, mo, dd] = day.split("-").map(Number);
     const [h, mi] = time.split(":").map(Number);
     const start = torontoToUtc(y, mo, dd, h, mi);
-    const hours = { quick: 1, evening: 3, "half-day": 4, "full-day": 8, weekend: 24 }[d.duration];
+    const hours = HOURS[d.duration];
     setBusy(true);
     let eventId: string | null = null;
     if (toCal && preferred) {
@@ -351,6 +355,14 @@ function ScheduleSheet({ d, onClose }: { d: DateIdea; onClose: () => void }) {
         <input type="date" aria-label="Date" className={smallSelect} value={day} min={torontoDayKey(new Date())} onChange={(e) => setDay(e.target.value)} />
         <input type="time" aria-label="Time" className={smallSelect} value={time} onChange={(e) => setTime(e.target.value)} />
       </div>
+      <BothFree
+        d={d}
+        picked={`${day}T${time}`}
+        onPick={(start) => {
+          setDay(torontoDayKey(start));
+          setTime(formatToronto(start, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" }));
+        }}
+      />
       {preferred && (
         <label className="mt-1 flex min-h-11 items-center gap-2">
           <input type="checkbox" checked={toCal} onChange={(e) => setToCal(e.target.checked)} className="h-[18px] w-[18px] accent-red-oxide" />
@@ -477,5 +489,51 @@ function MemoryItem({ mem }: { mem: Memory }) {
         )}
       </div>
     </li>
+  );
+}
+
+/** "You're both free": the next openings in both calendars that fit this date (two weeks ahead). */
+function BothFree({ d, picked, onPick }: { d: DateIdea; picked: string; onPick: (start: Date) => void }) {
+  const { me, partner } = usePeople();
+  const { data: sources } = useRows<CalendarSource>("calendar_sources");
+  const { data: events } = useRows<CachedEvent>("calendar_event_cache");
+  const { data: dates } = useRows<DateIdea>("date_ideas");
+  const { data: trips } = useRows<Trip>("trips");
+  const [now] = useState(() => Date.now());
+  const ours = live(sources).filter((s) => s.visible);
+  const connected = new Set(ours.map((s) => s.member_id));
+  if (!ours.length) return <p className="m-0 mt-2 text-xs text-ink-2">Connect your calendars in Settings and Veedu will suggest times you&apos;re both free.</p>;
+  const busy = busyFromEvents(live(events), new Set(ours.map((s) => s.id)));
+  // other planned dates count as busy too
+  for (const x of live(dates)) if (x.id !== d.id && x.status === "planned" && x.planned_for) busy.push([Date.parse(x.planned_for), Date.parse(x.planned_for) + HOURS[x.duration] * 3_600_000]);
+  const blocked = new Set<string>();
+  for (const t of live(trips)) for (let day = t.starts_on; day <= t.ends_on; day = addDays(day, 1)) blocked.add(day);
+  const slots = findFreeSlots({ busy, blockedDays: blocked, from: now + 60 * 60_000, durationHours: HOURS[d.duration] });
+  const missing = [me, partner].filter((p) => p && !connected.has(p.id)).map((p) => (p!.id === me?.id ? "your" : `${p!.display_name}'s`));
+  return (
+    <div className="mt-2" aria-label="Times you're both free">
+      <p className="m-0 mb-1 text-xs font-bold text-leaf">{missing.length ? "Free in the connected calendars" : "You're both free"}</p>
+      {slots.length === 0 ? (
+        <p className="m-0 text-xs text-ink-2">No opening that fits in the next two weeks. Pick a time yourself.</p>
+      ) : (
+        <div className="flex flex-wrap gap-1.5">
+          {slots.map((s) => {
+            const key = `${s.day}T${formatToronto(s.start, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" })}`;
+            return (
+              <button
+                key={s.day}
+                type="button"
+                aria-pressed={picked === key}
+                onClick={() => onPick(s.start)}
+                className={`min-h-9 rounded-full border px-3 text-xs font-bold ${picked === key ? "border-leaf bg-leaf text-white" : "border-[#cfe0c4] bg-white text-leaf"}`}
+              >
+                {formatToronto(s.start, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+              </button>
+            );
+          })}
+        </div>
+      )}
+      {missing.length > 0 && <p className="m-0 mt-1 text-[11px] text-ink-2">({missing.join(" and ")} calendar isn&apos;t connected, so it isn&apos;t checked.)</p>}
+    </div>
   );
 }

@@ -4,7 +4,26 @@
 // Deployed by .github/workflows/deploy-functions.yml (no JWT check; it takes no input).
 import webpush from "npm:web-push@3.6.7";
 import { adminKey, db, env } from "../_shared/server.ts";
-import { planReminders, type Chore, type Member, type Milestone, type Note, type Prefs, type Task } from "./logic.ts";
+import {
+  planReminders,
+  torontoAt,
+  type CalendarEvent,
+  type CalendarSource,
+  type Chore,
+  type Member,
+  type Milestone,
+  type Note,
+  type PlannedDate,
+  type Prefs,
+  type Renewal,
+  type ShoppingItem,
+  type StoreVisit,
+  type Task,
+  type Trip,
+} from "./logic.ts";
+
+const torontoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const plusDays = (day: string, n: number) => new Date(Date.parse(day + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
 
 Deno.serve(async () => {
   const pub = env("VAPID_PUBLIC_KEY"),
@@ -14,11 +33,16 @@ Deno.serve(async () => {
   webpush.setVapidDetails(subject, pub, priv);
   if (!adminKey()) return Response.json({ error: "No secret/service key available to the function" }, { status: 500 });
 
-  const since = new Date(Date.now() - 3 * 86_400_000).toISOString();
+  const now = new Date();
+  const since = new Date(now.getTime() - 3 * 86_400_000).toISOString();
+  const today = torontoToday();
+  const dayStart = torontoAt(today, 0, 0).toISOString(),
+    dayEnd = torontoAt(plusDays(today, 1), 0, 0).toISOString();
   const [members, prefs, chores, tasks, notes, subs, milestones] = await Promise.all([
     db.from("members").select("id, user_id, display_name, household_id").is("deleted_at", null),
     db.from("notification_prefs").select("member_id, enabled, quiet_start, quiet_end, kinds"),
-    db.from("chores").select("id, household_id, title, next_due_at, assignee_id, remind, paused, deleted_at, reminded_due_at").is("deleted_at", null).lte("next_due_at", new Date().toISOString()).gte("next_due_at", since),
+    // up to the end of today: reminders only fire once due; the digest lists the rest of today
+    db.from("chores").select("id, household_id, title, next_due_at, assignee_id, remind, paused, deleted_at, reminded_due_at").is("deleted_at", null).lt("next_due_at", dayEnd).gte("next_due_at", since),
     db.from("tasks").select("id, household_id, title, due_at, due_has_time, assignee_id, visibility, created_by, completed_at, deleted_at, reminded_due_at").is("deleted_at", null).is("completed_at", null).not("due_at", "is", null).gte("due_at", since),
     db.from("notes").select("id, household_id, body, created_by, created_at, deleted_at, archived_at, notified_at").is("notified_at", null).gte("created_at", since),
     db.from("push_subscriptions").select("id, member_id, endpoint, p256dh, auth").is("deleted_at", null),
@@ -28,14 +52,40 @@ Deno.serve(async () => {
   const err = [members, prefs, chores, tasks, notes, subs].find((r) => r.error)?.error;
   if (err) return Response.json({ error: err.message }, { status: 500 });
 
+  // store visits and the morning digest (each optional: if its tables aren't there yet, it's skipped)
+  const twoHoursAgo = new Date(now.getTime() - 2 * 3_600_000).toISOString();
+  const [visits, shopping, sources, events, dates, trips, renewals, sentToday] = await Promise.all([
+    db.from("store_visits").select("id, household_id, member_id, store, started_at, ended_at, notified_at, items_pushed_until").is("ended_at", null).gte("started_at", twoHoursAgo),
+    db.from("shopping_items").select("household_id, name, store, created_by, created_at, checked_at, deleted_at").is("deleted_at", null).is("checked_at", null),
+    db.from("calendar_sources").select("id, member_id, is_us_calendar, visible").is("deleted_at", null),
+    db.from("calendar_event_cache").select("source_id, google_event_id, summary, starts_at, ends_at, all_day").is("deleted_at", null).lt("starts_at", dayEnd).gt("ends_at", dayStart),
+    db.from("date_ideas").select("household_id, title, planned_for").is("deleted_at", null).eq("status", "planned").gte("planned_for", dayStart).lt("planned_for", dayEnd),
+    db.from("trips").select("household_id, title, starts_on, ends_on").is("deleted_at", null).gte("starts_on", today).lte("starts_on", plusDays(today, 14)),
+    db.from("vault_items").select("household_id, label, renewal_date").is("deleted_at", null).gte("renewal_date", today).lte("renewal_date", plusDays(today, 7)),
+    db.from("digest_log").select("member_id").eq("day", today),
+  ]);
+  const digestReady = ![sources, events, dates, trips, renewals, sentToday].some((r) => r.error);
+
   const plans = planReminders({
-    now: new Date(),
+    now,
     members: members.data as Member[],
     prefs: prefs.data as Prefs[],
     chores: chores.data as Chore[],
     tasks: tasks.data as Task[],
     notes: notes.data as Note[],
     milestones: (milestones.error ? [] : milestones.data) as Milestone[],
+    visits: (visits.error ? [] : visits.data) as StoreVisit[],
+    shopping: (shopping.error ? [] : shopping.data) as ShoppingItem[],
+    digest: digestReady
+      ? {
+          sources: sources.data as CalendarSource[],
+          events: events.data as CalendarEvent[],
+          dates: dates.data as PlannedDate[],
+          trips: trips.data as Trip[],
+          renewals: renewals.data as Renewal[],
+          sentToday: (sentToday.data ?? []).map((r) => r.member_id as string),
+        }
+      : undefined,
   });
 
   let sent = 0,
@@ -48,7 +98,16 @@ Deno.serve(async () => {
         ? await db.from("notes").update({ notified_at: new Date().toISOString() }).eq("id", c.id).is("notified_at", null).select("id")
         : c.table === "milestones"
           ? await db.from("milestones").update({ reminded: [...c.reminded.slice(-20), c.key] }).eq("id", c.id).not("reminded", "cs", `{${c.key}}`).select("id")
-          : await db.from(c.table).update({ reminded_due_at: c.due }).eq("id", c.id).or(`reminded_due_at.is.null,reminded_due_at.neq.${c.due}`).select("id");
+          : c.table === "store_visits"
+            ? await db.from("store_visits").update({ notified_at: new Date().toISOString() }).eq("id", c.id).is("notified_at", null).select("id")
+            : c.table === "store_items"
+              ? await (c.prev
+                  ? db.from("store_visits").update({ items_pushed_until: c.until }).eq("id", c.id).eq("items_pushed_until", c.prev)
+                  : db.from("store_visits").update({ items_pushed_until: c.until }).eq("id", c.id).is("items_pushed_until", null)
+                ).select("id")
+              : c.table === "digest_log"
+                ? await db.from("digest_log").insert({ member_id: c.memberId, day: c.day }).select("member_id")
+                : await db.from(c.table).update({ reminded_due_at: c.due }).eq("id", c.id).or(`reminded_due_at.is.null,reminded_due_at.neq.${c.due}`).select("id");
     if (claimed.error || !claimed.data?.length) {
       skipped++;
       continue;
@@ -70,5 +129,8 @@ Deno.serve(async () => {
       }
     }
   }
+  // housekeeping: old digest records and finished store visits
+  await db.from("digest_log").delete().lt("day", plusDays(today, -14));
+  await db.from("store_visits").delete().lt("started_at", new Date(now.getTime() - 30 * 86_400_000).toISOString());
   return Response.json({ plans: plans.length, sent, skipped });
 });

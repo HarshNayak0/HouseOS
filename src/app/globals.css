@@ -71,3 +71,15 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* quick-add: the three circles fan up from the + */
+@keyframes quickadd-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

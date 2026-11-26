@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from "react";
 import { live, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
+import { useNow } from "@/lib/lists/useNow";
+import { dueStaples, type FrequencyRow } from "@/lib/staples";
 import { usePeople } from "./ui";
 import { Check, EmptyState, IconButton, PartnerHint, Row, Sec, Trash, TrashIcon, addBtn, inputCls, linkBtn, smallSelect } from "./ui";
 
@@ -15,12 +17,20 @@ export interface ShoppingItem extends BaseRow {
   checked_at: string | null;
   checked_by: string | null;
 }
-interface Frequent {
-  normalized_name: string;
-  display_name: string;
-  times_added: number;
-  last_store: string | null;
+type Frequent = FrequencyRow;
+export interface StoreVisit {
+  id: string;
+  household_id: string;
+  member_id: string;
+  store: string;
+  started_at: string;
+  ended_at: string | null;
 }
+const VISIT_MS = 2 * 3_600_000;
+/** Store visits still going (not ended, under 2 hours old). */
+export const activeVisits = (rows: StoreVisit[] | undefined, now: number) =>
+  // (a visit just started here has no started_at until the server answers: count it as now)
+  (rows ?? []).filter((v) => !v.ended_at && now - (v.started_at ? Date.parse(v.started_at) : now) < VISIT_MS);
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 const ANY = "Any store";
@@ -30,6 +40,7 @@ export function ShoppingList() {
   const { me } = usePeople();
   const { data: rows, isLoading } = useRows<ShoppingItem>("shopping_items");
   const { data: freq } = useRows<Frequent & { id: string; deleted_at: null }>("item_frequency");
+  const nowMs = useNow();
   const m = useRowMutation<ShoppingItem>("shopping_items");
   const [name, setName] = useState("");
   const [store, setStore] = useState(ANY);
@@ -53,8 +64,10 @@ export function ShoppingList() {
 
   const onList = new Set(open.map((i) => i.normalized_name));
   const q = norm(name);
+  const staples = q ? [] : dueStaples(freq, onList, nowMs);
+  const stapleKeys = new Set(staples.map((x) => x.key));
   const suggestions = (freq ?? [])
-    .filter((f) => !onList.has(f.normalized_name) && (q ? f.normalized_name.startsWith(q) && f.normalized_name !== q : true))
+    .filter((f) => !onList.has(f.normalized_name) && !stapleKeys.has(f.normalized_name) && (q ? f.normalized_name.startsWith(q) && f.normalized_name !== q : true))
     .slice(0, q ? 5 : 6);
 
   const add = (rawName: string, rawStore?: string | null) => {
@@ -89,6 +102,7 @@ export function ShoppingList() {
 
   return (
     <Sec title="Shopping list" right={<span className="font-normal normal-case tracking-normal">{open.length} to get</span>}>
+      <StoreVisitBar stores={stores.filter((x) => x !== ANY)} />
       <form
         className="flex flex-wrap gap-1.5"
         onSubmit={(e) => {
@@ -123,6 +137,37 @@ export function ShoppingList() {
           )}
         </div>
       </form>
+      {staples.length > 0 && (
+        <div className="mt-2 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2" aria-label="Probably running low">
+          <div className="mb-1 flex items-center justify-between">
+            <span className="text-[11px] font-bold text-[#7d5a1a]">Probably running low</span>
+            <button
+              type="button"
+              className="min-h-9 text-xs font-bold text-teak underline"
+              onClick={() => {
+                staples.forEach((x) => add(x.name, x.store));
+                toast(`Added ${staples.length} staple${staples.length > 1 ? "s" : ""}`);
+              }}
+            >
+              Add all
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {staples.map((x) => (
+              <button
+                key={x.key}
+                type="button"
+                onClick={() => add(x.name, x.store)}
+                title={`Usually every ${x.everyDays} days · last added ${x.sinceDays} days ago`}
+                aria-label={`Add ${x.name}: usually every ${x.everyDays} days, last added ${x.sinceDays} days ago`}
+                className="min-h-9 rounded-full border border-[#e9d4a4] bg-white px-3 text-xs font-bold text-teak"
+              >
+                + {x.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {suggestions.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1.5" aria-label={q ? "Suggestions" : "Often bought"}>
           {!q && <span className="w-full text-[11px] text-ink-2">Often bought</span>}
@@ -238,5 +283,82 @@ function ItemRow({
         <TrashIcon />
       </IconButton>
     </Row>
+  );
+}
+
+/** "I'm at the store": tells the other person (push), and their additions are pushed to you. */
+function StoreVisitBar({ stores }: { stores: string[] }) {
+  const { me, partner, byId } = usePeople();
+  const { data: rows } = useRows<StoreVisit>("store_visits");
+  const m = useRowMutation<StoreVisit>("store_visits");
+  const nowMs = useNow(30_000);
+  const [picking, setPicking] = useState(false);
+  const [store, setStore] = useState("");
+  const active = activeVisits(rows, nowMs);
+  const mine = active.find((v) => v.member_id === me?.id);
+  const theirs = active.filter((v) => v.member_id !== me?.id);
+  const start = (name: string) => {
+    if (!me || !name.trim()) return;
+    m.insert({ household_id: me.household_id, member_id: me.id, store: name.trim().slice(0, 40) });
+    setPicking(false);
+    toast(`${partner?.display_name ?? "Your partner"} will get a notification that you're at ${name.trim()}`);
+  };
+  const end = (id: string) => m.update(id, { ended_at: new Date().toISOString() });
+  const mins = (v: StoreVisit) => Math.max(1, Math.round((nowMs - Date.parse(v.started_at)) / 60_000));
+  return (
+    <div className="mb-2">
+      {theirs.map((v) => (
+        <div key={v.id} role="status" className="mb-1.5 rounded-lg border border-[#cfe0c4] bg-[#f1f7ec] px-3 py-2 text-sm">
+          🛒 <b>{byId(v.member_id)?.display_name ?? "Your partner"}</b> is at <b>{v.store}</b> now ({mins(v)} min). Add anything you need and it&apos;s sent to them.
+        </div>
+      ))}
+      {mine ? (
+        <div className="flex items-center gap-2 rounded-lg border border-[#cfe0c4] bg-[#f1f7ec] px-3 py-2 text-sm">
+          <span className="flex-1">
+            🛒 You&apos;re at <b>{mine.store}</b>. New items from your partner come to you as notifications.
+          </span>
+          <button type="button" className="min-h-9 flex-none text-xs font-bold text-teak underline" onClick={() => end(mine.id)}>
+            Done shopping
+          </button>
+        </div>
+      ) : picking ? (
+        <form
+          className="flex flex-wrap items-center gap-1.5 rounded-lg border border-brass bg-[#fffdf8] p-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            start(store);
+          }}
+        >
+          <span className="w-full text-xs font-bold text-ink-2">Which store?</span>
+          {stores.map((s) => (
+            <button key={s} type="button" onClick={() => start(s)} className="min-h-9 rounded-full border border-[#e6d9c2] bg-white px-3 text-xs font-bold text-teak">
+              {s}
+            </button>
+          ))}
+          <input className={`${inputCls} min-w-32`} placeholder="Another store" aria-label="Store name" maxLength={40} value={store} onChange={(e) => setStore(e.target.value)} />
+          <button type="submit" className={addBtn} disabled={!store.trim()}>
+            Go
+          </button>
+          <button type="button" className={linkBtn} onClick={() => setPicking(false)}>
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setStore("");
+            setPicking(true);
+          }}
+          className="min-h-10 w-full rounded-lg border border-dashed border-[#cfe0c4] bg-white text-sm font-bold text-leaf"
+          aria-describedby="store-hint"
+        >
+          🛒 I&apos;m at the store
+          <span id="store-hint" className="sr-only">
+            Tells your partner, and sends you what they add while you shop
+          </span>
+        </button>
+      )}
+    </div>
   );
 }

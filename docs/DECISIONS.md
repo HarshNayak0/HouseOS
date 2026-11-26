@@ -4,6 +4,12 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-26 | Quick add: one floating + over the house that fans out into Grocery / Task / Note; hidden while a panel is open | Capture in one tap from anywhere; rooms already have their own add box |
+| 2026-11-26 | "I'm at the store": `store_visits` + DB triggers ping `notify`; partner gets "X is at Y", shopper gets items added during the visit; ends by hand or after 2 h | Push needs the server (the partner's subscriptions aren't readable by the app); claims prevent repeats |
+| 2026-11-26 | Staples from `item_frequency` (count, first and last added): usual gap = span / (count − 1); due at 0.9× the gap; needs ≥3 purchases, gap ≥2 days, and stops after 4× | No new tables or history; good enough rhythm detection for groceries |
+| 2026-11-26 | Free time for dates only (as asked): weekday evenings 6–10:30, weekends 10–10:30, 30 min buffer, timed events only, trips block days | All-day events are mostly holidays and birthdays |
+| 2026-11-26 | Morning digest from `notify` at 8 am (dropped after 11), per person, nothing on an empty day, claimed in `digest_log` | One useful push instead of several; respects quiet hours and its own switch |
+| 2026-11-26 | Instagram reels: no video scraping | Instagram blocks and forbids downloading reels from a server (and the free AI can't fetch them by link); captions and screenshots stay the way in |
 | 2026-11-26 | Each room's panel is its own chunk (next/dynamic), prefetched 4 s after sign-in | First load 318 → 268 KB gzipped; rooms still open instantly |
 | 2026-11-26 | Live rows stay fresh for 5 min (staleTime); realtime refreshes are batched per table (250 ms) | Realtime already keeps lists current; avoids ~10 refetches on every app focus and one refetch per row in a burst |
 | 2026-11-26 | Edge Functions verify the caller with `getClaims` (local JWT check with asymmetric keys, else Auth) | Saves a network round trip per call; same result |
