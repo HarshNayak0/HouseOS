@@ -4,7 +4,8 @@
 // Websites: schema.org JSON-LD first (no AI); Gemini only as a fallback. Captions: Gemini (rules if unavailable).
 // Screenshots (up to 4): read by Gemini; they're not stored.
 // Only recipe content is ever sent to Gemini. Limits: 20 imports a day, 60 a month per household.
-import { createClient } from "npm:@supabase/supabase-js@2.119.2";
+import { corsHeaders } from "../_shared/http.ts";
+import { APP_URL, caller, db, env, errorResponse, HttpError } from "../_shared/server.ts";
 import {
   captionByRules,
   extractJsonLdRecipe,
@@ -16,36 +17,6 @@ import {
   type InlineImage,
   type RecipeDraft,
 } from "../_shared/recipe.ts";
-
-const env = (k: string) => Deno.env.get(k) ?? "";
-const APP_URL = env("APP_URL") || "https://veeduos.vercel.app";
-function adminKey(): string {
-  try {
-    const keys = JSON.parse(env("SUPABASE_SECRET_KEYS") || "{}") as Record<string, string>;
-    const k = keys.default ?? Object.values(keys)[0];
-    if (k) return k;
-  } catch {
-    /* not JSON */
-  }
-  return env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-}
-const db = createClient(env("SUPABASE_URL"), adminKey(), { auth: { persistSession: false } });
-
-class HttpError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
-
-async function member(req: Request) {
-  const jwt = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-  if (!jwt) throw new HttpError(401, "Not signed in");
-  const { data, error } = await db.auth.getUser(jwt);
-  if (error || !data.user) throw new HttpError(401, "Not signed in");
-  const { data: m } = await db.from("members").select("id, household_id").eq("user_id", data.user.id).is("deleted_at", null).maybeSingle();
-  if (!m) throw new HttpError(403, "Not in a household");
-  return { ...m, user_id: data.user.id } as { id: string; household_id: string; user_id: string };
-}
 
 async function checkLimits(household: string) {
   const since = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
@@ -279,26 +250,19 @@ async function fetchImage(body: Record<string, unknown>) {
   return { mime: img.type.split(";")[0], data: btoa(bin) };
 }
 
-function corsFor(origin: string | null): Record<string, string> {
-  const ok = origin && (origin === APP_URL || /^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin) || /^http:\/\/localhost(:\d+)?$/.test(origin));
-  return ok
-    ? { "Access-Control-Allow-Origin": origin!, "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info", "Access-Control-Allow-Methods": "POST, OPTIONS", Vary: "Origin" }
-    : {};
-}
-
 Deno.serve(async (req) => {
-  const cors = corsFor(req.headers.get("Origin"));
+  const cors = corsHeaders(req.headers.get("Origin"), APP_URL);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const json = (b: unknown, status = 200) => Response.json(b, { status, headers: cors });
   const route = new URL(req.url).pathname.replace(/^.*\/recipes/, "") || "/";
   try {
     if (req.method !== "POST") throw new HttpError(405, "Use POST");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-    const m = await member(req);
+    const m = await caller(req);
     if (route === "/import") return json(await importRecipe(m, body));
     if (route === "/image") return json(await fetchImage(body));
     throw new HttpError(404, "Not found");
   } catch (e) {
-    return json({ error: (e as Error).message }, e instanceof HttpError ? e.status : 500);
+    return errorResponse(e, cors);
   }
 });

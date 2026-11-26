@@ -1,11 +1,7 @@
 /** Pure helpers for trips (unit-tested). Day keys are YYYY-MM-DD in Toronto. */
 
-/** Whole days from day key a to day key b. */
-export function daysBetween(a: string, b: string) {
-  return Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86_400_000);
-}
-
-export const addDays = (day: string, n: number) => new Date(Date.parse(day + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
+import { addDays, daysBetween } from "./time";
+export { addDays, daysBetween };
 
 /** Share of a trip's packing items that are packed, or null when the list is empty. */
 export function packedPct(items: { trip_id: string; packed: boolean; deleted_at: string | null }[], tripId: string): number | null {

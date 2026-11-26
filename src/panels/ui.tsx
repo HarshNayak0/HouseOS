@@ -164,3 +164,42 @@ export function Toaster() {
     </div>
   );
 }
+
+/** 1–5 stars: a radio group when `onChange` is given, otherwise a read-only picture. */
+export function Stars({ value, onChange, label, size = "text-base" }: { value: number | null; onChange?: (v: number) => void; label: string; size?: string }) {
+  return (
+    <span role={onChange ? "radiogroup" : "img"} aria-label={`${label}: ${value ?? "not rated"}${value ? " of 5" : ""}`} className={`inline-flex ${size}`}>
+      {[1, 2, 3, 4, 5].map((n) =>
+        onChange ? (
+          <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => onChange(n)} className="h-9 w-7 text-brass">
+            {value !== null && n <= value ? "★" : "☆"}
+          </button>
+        ) : (
+          <span key={n} className="text-brass" aria-hidden="true">
+            {value !== null && n <= Math.round(value) ? "★" : "☆"}
+          </span>
+        ),
+      )}
+    </span>
+  );
+}
+
+/** A row of pill tabs (date ideas, trip sections). */
+export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs: [T, string][]; value: T; onChange: (t: T) => void; label: string }) {
+  return (
+    <div className="mb-2 flex gap-1" role="tablist" aria-label={label}>
+      {tabs.map(([t, text]) => (
+        <button
+          key={t}
+          type="button"
+          role="tab"
+          aria-selected={value === t}
+          onClick={() => onChange(t)}
+          className={`min-h-9 flex-1 rounded-full text-xs font-bold ${value === t ? "bg-teak text-white" : "border border-[#e6d9c2] bg-white"}`}
+        >
+          {text}
+        </button>
+      ))}
+    </div>
+  );
+}

@@ -4,6 +4,13 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-26 | Each room's panel is its own chunk (next/dynamic), prefetched 4 s after sign-in | First load 318 → 268 KB gzipped; rooms still open instantly |
+| 2026-11-26 | Live rows stay fresh for 5 min (staleTime); realtime refreshes are batched per table (250 ms) | Realtime already keeps lists current; avoids ~10 refetches on every app focus and one refetch per row in a burst |
+| 2026-11-26 | Edge Functions verify the caller with `getClaims` (local JWT check with asymmetric keys, else Auth) | Saves a network round trip per call; same result |
+| 2026-11-26 | Shared function code in `supabase/functions/_shared/` (server, http, crypto, rules); one client `callFunction` | Removes ~150 duplicated lines; milestone labels had already drifted ("1 years") |
+| 2026-11-26 | CORS for the functions: the app, this project's Vercel previews (`houseos-…-harsh-s-vercel`), localhost | Was any `*.vercel.app` for calendar and recipes |
+| 2026-11-26 | Trash: DB test fails if a table with `deleted_at` is neither purged nor explicitly excluded | Auto-purging every such table would delete members and settings; a guard catches forgotten tables instead |
+| 2026-11-26 | CI skips `playwright install-deps` when the browser is cached; deploy workflow smoke-tests every function | GitHub's runners already have Chromium's libraries (the apt step took 5 min); catches a function that fails to start |
 | 2026-11-24 | Usage monitor: monthly `pg_cron` snapshot of DB size and Storage bytes, "Check now" (≤ every 10 min), dashboard warning at 70% | SPEC §5; the two hard Supabase limits are the only ones visible from SQL. Egress, function calls and Vercel are checked in their own dashboards |
 | 2026-11-24 | Accessibility: axe (WCAG 2.1 A/AA) in the Playwright suite; floor-plan name pills moved out of the links (spoken name = English name + purpose) | Fixes "label in name"; an English screen reader can't read the Malayalam names anyway |
 | 2026-11-24 | Person chips choose white or dark text by contrast; muted text darkened to #7a6b5d | Lotus and brass chips with white text failed AA |

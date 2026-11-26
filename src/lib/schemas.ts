@@ -26,12 +26,5 @@ export const pushSubscriptionSchema = z.object({
   keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
 });
 
-/** Is `time` (HH:MM) inside quiet hours? Handles windows that cross midnight (23:00–07:00). */
-export function inQuietHours(hhmm: string, start: string, end: string): boolean {
-  const m = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  const t = m(hhmm),
-    s = m(start),
-    e = m(end);
-  if (s === e) return false;
-  return s < e ? t >= s && t < e : t >= s || t < e;
-}
+/** Quiet hours (shared with the reminder function). */
+export { inQuietHours } from "../../supabase/functions/_shared/rules";

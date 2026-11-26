@@ -81,6 +81,9 @@ export function useRows<T extends object>(table: ListTable) {
   return useQuery({
     queryKey: rowsKey(table),
     enabled: authEnabled && !!householdId,
+    // Realtime keeps lists current (and refreshes everything after a reconnect), so a list fetched in the
+    // last 5 minutes isn't fetched again when a panel opens or the app comes back into focus.
+    staleTime: 5 * 60_000,
     queryFn: async () => {
       const sb = supabaseBrowser()!;
       const o = ORDER[table] ?? { column: "created_at", ascending: true };
@@ -91,6 +94,21 @@ export function useRows<T extends object>(table: ListTable) {
       return data as unknown as T[];
     },
   });
+}
+
+/**
+ * Insert a row; if it already exists (unique key), update just the `editable` fields instead. An upsert
+ * would also try to rewrite the key columns, which the app isn't allowed to change.
+ */
+export async function insertOrUpdate(table: string, row: Record<string, unknown>, match: Record<string, unknown>, editable: string[]) {
+  const sb = supabaseBrowser()!;
+  const { error } = await sb.from(table).insert(row);
+  if (error?.code === "23505") {
+    let q = sb.from(table).update(Object.fromEntries(editable.map((k) => [k, row[k]])));
+    for (const [k, v] of Object.entries(match)) q = q.eq(k, v as string);
+    const { error: e2 } = await q;
+    if (e2) throw new Error(e2.message);
+  } else if (error) throw new Error(error.message);
 }
 
 /** Non-deleted rows only. */
@@ -196,15 +214,28 @@ export function useListsRealtime() {
     sb.getChannels()
       .filter((c) => c.topic === `realtime:${topic}`)
       .forEach((c) => sb.removeChannel(c));
+    // A burst of changes (a calendar sync, "add all to the shopping list") refreshes each list once,
+    // 250 ms after the first change, instead of once per row.
+    const pending = new Set<ListTable>();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = (...tables: ListTable[]) => {
+      tables.forEach((t) => pending.add(t));
+      if (timer) return; // already scheduled: this change joins it
+      timer = setTimeout(() => {
+        timer = null;
+        pending.forEach((t) => qc.invalidateQueries({ queryKey: rowsKey(t) }));
+        pending.clear();
+      }, 250);
+    };
     let ch = sb.channel(topic);
     for (const table of LIVE_TABLES) {
       ch = ch.on("postgres_changes", { event: "*", schema: "public", table, filter: `household_id=eq.${householdId}` }, (payload) => {
         const row = (payload.new ?? {}) as Partial<BaseRow>;
         const by = row.updated_by ?? row.created_by;
         if (row.id && by && by !== myUserId) markPartnerEdit(row.id);
-        qc.invalidateQueries({ queryKey: rowsKey(table) });
-        if (table === "chore_completions") qc.invalidateQueries({ queryKey: rowsKey("chores") });
-        if (table === "shopping_items") qc.invalidateQueries({ queryKey: rowsKey("item_frequency") });
+        refresh(table);
+        if (table === "chore_completions") refresh("chores");
+        if (table === "shopping_items") refresh("item_frequency");
       });
     }
     ch.subscribe((status) => {
@@ -212,6 +243,7 @@ export function useListsRealtime() {
       if (status === "SUBSCRIBED") LIVE_TABLES.forEach((t) => qc.invalidateQueries({ queryKey: rowsKey(t) }));
     });
     return () => {
+      if (timer) clearTimeout(timer);
       sb.removeChannel(ch);
     };
   }, [householdId, myUserId, qc]);

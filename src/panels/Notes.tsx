@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { live, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
+import { trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
+import { visibleNotes } from "@/lib/lists/notes";
 import { formatToronto } from "@/lib/time";
 import { EmptyState, IconButton, PartnerHint, Sec, Trash, TrashIcon, addBtn, smallSelect, usePeople } from "./ui";
 
@@ -26,10 +27,6 @@ const EXPIRY: [string, number | null][] = [
   ["3 days", 3],
   ["1 week", 7],
 ];
-
-/** Notes that are visible on the board (not deleted, archived or expired). */
-export const visibleNotes = (rows: Note[] | undefined, now = Date.now()) =>
-  live(rows).filter((n) => !n.archived_at && (!n.expires_at || Date.parse(n.expires_at) > now));
 
 export function NotesBoard() {
   const { me, byUser } = usePeople();

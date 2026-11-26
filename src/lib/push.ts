@@ -1,5 +1,6 @@
 "use client";
 
+import { insertOrUpdate } from "./lists/rows";
 import { pushSubscriptionSchema } from "./schemas";
 import { supabaseBrowser } from "./supabase/browser";
 
@@ -59,18 +60,8 @@ export async function enablePush(householdId: string, memberId: string): Promise
     auth: parsed.keys.auth,
     user_agent: navigator.userAgent.slice(0, 200),
   };
-  // Insert; if this device is already registered, refresh its keys instead.
-  // (An upsert would also try to update member_id/household_id, which clients may not change.)
-  const { error } = await sb.from("push_subscriptions").insert(row);
-  if (error?.code === "23505") {
-    const { error: upd } = await sb
-      .from("push_subscriptions")
-      .update({ p256dh: row.p256dh, auth: row.auth, user_agent: row.user_agent })
-      .eq("endpoint", row.endpoint);
-    if (upd) throw new Error(upd.message);
-  } else if (error) {
-    throw new Error(error.message);
-  }
+  // if this device is already registered, refresh its keys instead
+  await insertOrUpdate("push_subscriptions", row, { endpoint: row.endpoint }, ["p256dh", "auth", "user_agent"]);
   return "on";
 }
 

@@ -46,3 +46,23 @@ describe("Toronto time helpers", () => {
     );
   });
 });
+
+import { addDays, addMonths, daysBetween, formatDay, weekdayMon } from "@/lib/time";
+describe("day-key helpers", () => {
+  it("adds days across month, year and daylight-saving changes", () => {
+    expect(addDays("2026-03-07", 2)).toBe("2026-03-09");
+    expect(addDays("2026-11-01", -1)).toBe("2026-10-31");
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+  it("steps months to the 1st", () => {
+    expect(addMonths("2026-12-15", 1)).toBe("2027-01-01");
+    expect(addMonths("2026-01-31", -1)).toBe("2025-12-01");
+  });
+  it("counts days and weekdays", () => {
+    expect(daysBetween("2026-03-07", "2026-03-09")).toBe(2);
+    expect(daysBetween("2026-12-05", "2026-12-01")).toBe(-4);
+    expect(weekdayMon("2026-11-23")).toBe(0); // Monday
+    expect(weekdayMon("2026-11-29")).toBe(6); // Sunday
+    expect(formatDay("2026-12-13", { weekday: "short", month: "short", day: "numeric" })).toBe("Sun, Dec 13");
+  });
+});

@@ -1,20 +1,19 @@
 // The `vault` Edge Function: unlock by passkey or PIN, then read and write encrypted vault items.
 // Secrets in, secrets out: nothing here is ever logged, and errors never echo what was sent.
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.119.2";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
   verifyAuthenticationResponse,
   verifyRegistrationResponse,
 } from "npm:@simplewebauthn/server@14.0.3";
+import { allowedOrigin, corsHeaders } from "../_shared/http.ts";
+import { APP_URL, caller, db, env, errorResponse, HttpError, type Caller as Me } from "../_shared/server.ts";
 import { pinProblem, validateVaultItem } from "../_shared/vault.ts";
 import {
-  allowedOrigin,
   b64url,
   decryptItem,
   encryptItem,
   hashPin,
-  jwtPayload,
   lockoutMs,
   newSalt,
   newToken,
@@ -26,50 +25,12 @@ import {
   verifyPin,
 } from "./logic.ts";
 
-const env = (k: string) => Deno.env.get(k) ?? "";
-const APP_URL = env("APP_URL") || "https://veeduos.vercel.app";
 const MASTER = () => {
   const k = env("VAULT_MASTER_KEY");
   if (!k) throw new HttpError(503, "The vault isn't set up yet (VAULT_MASTER_KEY is missing)");
   return k;
 };
 const FILES = "vault-files";
-
-function adminKey(): string {
-  try {
-    const keys = JSON.parse(env("SUPABASE_SECRET_KEYS") || "{}") as Record<string, string>;
-    const k = keys.default ?? Object.values(keys)[0];
-    if (k) return k;
-  } catch {
-    /* not JSON */
-  }
-  return env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-}
-const db: SupabaseClient = createClient(env("SUPABASE_URL"), adminKey(), { auth: { persistSession: false } });
-
-class HttpError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
-
-interface Me {
-  id: string;
-  user_id: string;
-  household_id: string;
-  display_name: string;
-  jwt: Record<string, unknown>;
-}
-
-async function me(req: Request): Promise<Me> {
-  const jwt = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-  if (!jwt) throw new HttpError(401, "Not signed in");
-  const { data, error } = await db.auth.getUser(jwt);
-  if (error || !data.user) throw new HttpError(401, "Not signed in");
-  const { data: m } = await db.from("members").select("id, user_id, household_id, display_name").eq("user_id", data.user.id).is("deleted_at", null).maybeSingle();
-  if (!m) throw new HttpError(403, "Not in a household");
-  return { ...(m as Omit<Me, "jwt">), jwt: jwtPayload(jwt) };
-}
 
 // ---------- unlock sessions ----------
 async function openSession(m: Me) {
@@ -109,7 +70,7 @@ async function status(m: Me) {
     pin_set: !!pin,
     locked_until: pin?.locked_until && Date.parse(pin.locked_until) > Date.now() ? pin.locked_until : null,
     passkeys: keys ?? [],
-    signed_in_recently: signedInRecently(m.jwt, Date.now() / 1000),
+    signed_in_recently: signedInRecently(m.claims, Date.now() / 1000),
   };
 }
 
@@ -121,8 +82,8 @@ async function setPin(req: Request, m: Me, body: Record<string, unknown>) {
   // first PIN, or a forgotten one: needs a fresh Google sign-in. Changing it: needs the vault unlocked.
   if (existing) {
     const unlocked = await requireUnlocked(req, m).then(() => true, () => false);
-    if (!unlocked && !signedInRecently(m.jwt, Date.now() / 1000)) throw new HttpError(403, "To reset your PIN, sign out and sign in again first");
-  } else if (!signedInRecently(m.jwt, Date.now() / 1000)) {
+    if (!unlocked && !signedInRecently(m.claims, Date.now() / 1000)) throw new HttpError(403, "To reset your PIN, sign out and sign in again first");
+  } else if (!signedInRecently(m.claims, Date.now() / 1000)) {
     throw new HttpError(403, "To set up the vault, sign out and sign in again first (it checks it's really you)");
   }
   const salt = newSalt();
@@ -355,9 +316,7 @@ Deno.serve(async (req) => {
   const url = new URL(req.url);
   const route = url.pathname.replace(/^.*\/vault/, "") || "/";
   const origin = allowedOrigin(req.headers.get("Origin"), APP_URL);
-  const cors: Record<string, string> = origin
-    ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info, x-vault-token", "Access-Control-Allow-Methods": "POST, OPTIONS", Vary: "Origin" }
-    : {};
+  const cors = corsHeaders(origin, APP_URL, "x-vault-token");
   const headers = { ...cors, "Cache-Control": "no-store" };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const json = (body: unknown, status = 200) => Response.json(body, { status, headers });
@@ -365,7 +324,7 @@ Deno.serve(async (req) => {
     if (req.method !== "POST") throw new HttpError(405, "Use POST");
     if (!origin) throw new HttpError(403, "Open the vault from the Veedu app");
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
-    const m = await me(req);
+    const m = await caller(req);
     switch (route) {
       case "/status":
         return json(await status(m));
@@ -405,7 +364,6 @@ Deno.serve(async (req) => {
     }
   } catch (e) {
     // never log request bodies or decrypted data; only the status reaches the platform logs
-    const status = e instanceof HttpError ? e.status : 500;
-    return json({ error: e instanceof HttpError ? e.message : "Something went wrong in the vault" }, status);
+    return errorResponse(e, headers, "Something went wrong in the vault");
   }
 });

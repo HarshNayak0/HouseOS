@@ -6,10 +6,10 @@
  */
 import { useSyncExternalStore } from "react";
 import type { VaultItemInput, VaultSection } from "../../supabase/functions/_shared/vault";
-import { compressToWebp } from "./image";
+import { prepareUpload } from "./files";
+import { callFunction, FunctionError } from "./functions";
 import type { BaseRow } from "./lists/rows";
 import { supabaseBrowser } from "./supabase/browser";
-import { SUPABASE_URL } from "./supabase/config";
 
 /** What the household can see without unlocking (dashboard, calendar, closet bell). */
 export interface VaultItemRow extends BaseRow {
@@ -40,14 +40,8 @@ export interface VaultStatus {
   signed_in_recently: boolean;
 }
 
-export class VaultError extends Error {
-  constructor(
-    public status: number,
-    message: string,
-  ) {
-    super(message);
-  }
-}
+/** A vault call that failed (the status is 423 when the vault has locked itself). */
+export const VaultError = FunctionError;
 
 // ---------- in-memory session ----------
 interface Session {
@@ -90,27 +84,19 @@ if (typeof document !== "undefined") {
 
 // ---------- calls ----------
 export async function callVault<T = unknown>(path: string, body: Record<string, unknown> = {}, token = session?.token): Promise<T> {
-  const sb = supabaseBrowser();
-  const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/vault/${path}`, {
-    method: "POST",
-    cache: "no-store",
-    headers: {
-      "Content-Type": "application/json",
-      ...(data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {}),
-      ...(token ? { "x-vault-token": token } : {}),
-    },
-    body: JSON.stringify(body),
-  });
-  const j = await res.json().catch(() => ({}));
-  if (res.status === 423) {
-    setSession(null);
-    throw new VaultError(423, "The vault locked itself. Unlock it again");
+  let j: T & { expires_at?: unknown };
+  try {
+    j = await callFunction<T & { expires_at?: unknown }>("vault", path, body, token ? { "x-vault-token": token } : {});
+  } catch (e) {
+    if (e instanceof FunctionError && e.status === 423) {
+      setSession(null);
+      throw new FunctionError(423, "The vault locked itself. Unlock it again");
+    }
+    throw e;
   }
-  if (!res.ok) throw new VaultError(res.status, j.error ?? `Vault error ${res.status}`);
   // every unlocked call slides the 5-minute timer
   if (session && token === session.token) setSession({ ...session, expiresAt: typeof j.expires_at === "string" ? Date.parse(j.expires_at) : Date.now() + 5 * 60_000 });
-  return j as T;
+  return j;
 }
 
 function started(r: { token: string; expires_at: string }) {
@@ -167,10 +153,7 @@ export const deleteItem = (id: string, restore = false) => callVault("items/dele
 
 /** Upload a manual or document into the private vault bucket through a one-time signed link. */
 export async function attachFile(id: string, file: File) {
-  const isImage = file.type.startsWith("image/");
-  if (!isImage && file.type !== "application/pdf") throw new Error("Only photos and PDFs can be attached");
-  const body = isImage ? await compressToWebp(file) : file;
-  if (body.size > 5 * 1024 * 1024) throw new Error("Files can be up to 5 MB");
+  const body = await prepareUpload(file);
   const { path, token } = await callVault<{ path: string; token: string }>("items/attach/start", { id, type: body.type, size: body.size });
   const { error } = (await supabaseBrowser()?.storage.from("vault-files").uploadToSignedUrl(path, token, body, { contentType: body.type })) ?? {};
   if (error) throw new Error(error.message);

@@ -10,10 +10,10 @@ import { useNow } from "@/lib/lists/useNow";
 import { goToRoom } from "@/lib/nav";
 import { useUsage, usageWarnings } from "@/lib/usage";
 import Link from "next/link";
-import { formatToronto, torontoDayKey } from "@/lib/time";
+import { addDays, daysBetween, formatDay, formatToronto, torontoDayKey } from "@/lib/time";
 import type { Chore } from "./Chores";
 import type { Task } from "./Tasks";
-import { daysBetween, packedPct } from "@/lib/trips";
+import { packedPct } from "@/lib/trips";
 import type { PackingItem, Trip } from "./Trips";
 import type { VaultItemRow } from "@/lib/vault";
 import { Sec, WhoChip, linkBtn, usePeople } from "./ui";
@@ -26,12 +26,7 @@ const TONE: Record<UrgentTone, string> = {
   renewal: "border-[#e9d4a4] bg-[#fff8e6] text-[#7d5a1a]",
 };
 
-const addDays = (key: string, n: number) => {
-  const d = new Date(key + "T12:00:00Z");
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-const dayLabel = (key: string, o: Intl.DateTimeFormatOptions) => new Date(key + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", ...o });
+const dayLabel = formatDay;
 
 export function Dashboard() {
   const nowMs = useNow();
@@ -215,7 +210,7 @@ export function TogetherCounter() {
   const nowMs = useNow(3_600_000);
   const since = data?.togetherSince;
   if (!since) return null;
-  const days = Math.floor((Date.parse(torontoDayKey(new Date(nowMs)) + "T12:00:00Z") - Date.parse(since + "T12:00:00Z")) / 86_400_000);
+  const days = daysBetween(since, torontoDayKey(new Date(nowMs)));
   if (days < 0) return null;
   return (
     <Sec title="Together">

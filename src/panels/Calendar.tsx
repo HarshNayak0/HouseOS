@@ -7,19 +7,14 @@ import { callCalendar, useCalendarItems, type CalItem, type CalendarSource } fro
 import { rowsKey } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
 import { useNow } from "@/lib/lists/useNow";
-import { formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
+import { addDays, addMonths, formatDay, formatToronto, torontoDayKey, torontoToUtc, weekdayMon } from "@/lib/time";
 import { Sec, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 type View = "day" | "week" | "month";
 const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const addDays = (key: string, n: number) => {
-  const d = new Date(key + "T12:00:00Z");
-  d.setUTCDate(d.getUTCDate() + n);
-  return d.toISOString().slice(0, 10);
-};
-const dowMon = (key: string) => (new Date(key + "T12:00:00Z").getUTCDay() + 6) % 7;
-const label = (key: string, o: Intl.DateTimeFormatOptions) => new Date(key + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", ...o });
+const label = formatDay;
+const dowMon = weekdayMon;
 
 function timeRange(i: CalItem) {
   if (i.allDay) return "All day";
@@ -47,11 +42,7 @@ export function CalendarView() {
 
   const connected = sources.length > 0;
   const step = (dir: number) => {
-    const n = view === "day" ? addDays(cursor, dir) : view === "week" ? addDays(cursor, 7 * dir) : (() => {
-      const d = new Date(cursor.slice(0, 7) + "-01T12:00:00Z");
-      d.setUTCMonth(d.getUTCMonth() + dir);
-      return d.toISOString().slice(0, 10);
-    })();
+    const n = view === "day" ? addDays(cursor, dir) : view === "week" ? addDays(cursor, 7 * dir) : addMonths(cursor, dir);
     setCursor(n);
     setSelected(n);
   };

@@ -7,9 +7,9 @@
 //   POST /calendar/disconnect  (signed in)  → revoke Google access and remove the cached calendars
 // Google secrets live only in this function's secrets. Deployed with no JWT check; the endpoints that
 // act for a person verify their Supabase session themselves.
-import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.119.2";
+import { corsHeaders } from "../_shared/http.ts";
+import { APP_URL, caller, db, env, errorResponse, HttpError, type Caller as Member } from "../_shared/server.ts";
 import {
-  allowedOrigin,
   decryptSecret,
   encryptSecret,
   signState,
@@ -21,30 +21,10 @@ import {
   type GoogleEvent,
 } from "./logic.ts";
 
-const env = (k: string) => Deno.env.get(k) ?? "";
-const APP_URL = env("APP_URL") || "https://veeduos.vercel.app";
 const GOOGLE = "https://www.googleapis.com/calendar/v3";
 const SCOPE = "openid email https://www.googleapis.com/auth/calendar";
 const CALLBACK = `${env("SUPABASE_URL")}/functions/v1/calendar/callback`;
 
-function adminKey(): string {
-  try {
-    const keys = JSON.parse(env("SUPABASE_SECRET_KEYS") || "{}") as Record<string, string>;
-    const k = keys.default ?? Object.values(keys)[0];
-    if (k) return k;
-  } catch {
-    /* not JSON */
-  }
-  return env("SUPABASE_SECRET_KEY") || env("SUPABASE_SERVICE_ROLE_KEY");
-}
-const db: SupabaseClient = createClient(env("SUPABASE_URL"), adminKey(), { auth: { persistSession: false } });
-
-interface Member {
-  id: string;
-  user_id: string;
-  household_id: string;
-  display_name: string;
-}
 interface Account {
   id: string;
   household_id: string;
@@ -67,23 +47,7 @@ interface Source {
   full_synced_at: string | null;
 }
 
-class HttpError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
-
 // ---------- auth ----------
-async function memberFromRequest(req: Request): Promise<Member> {
-  const jwt = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
-  if (!jwt) throw new HttpError(401, "Not signed in");
-  const { data, error } = await db.auth.getUser(jwt);
-  if (error || !data.user) throw new HttpError(401, "Not signed in");
-  const { data: m } = await db.from("members").select("id, user_id, household_id, display_name").eq("user_id", data.user.id).is("deleted_at", null).maybeSingle();
-  if (!m) throw new HttpError(403, "Not in a household");
-  return m as Member;
-}
-
 // ---------- Google ----------
 async function accessToken(acc: Account): Promise<string> {
   const refresh = await decryptSecret(acc.refresh_token_enc, env("TOKEN_ENCRYPTION_KEY"));
@@ -368,10 +332,7 @@ async function disconnect(me: Member) {
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const route = url.pathname.replace(/^.*\/calendar/, "") || "/";
-  const origin = allowedOrigin(req.headers.get("Origin"), APP_URL);
-  const cors: Record<string, string> = origin
-    ? { "Access-Control-Allow-Origin": origin, "Access-Control-Allow-Headers": "authorization, content-type, apikey, x-client-info", "Access-Control-Allow-Methods": "POST, GET, OPTIONS", Vary: "Origin" }
-    : {};
+  const cors = corsHeaders(req.headers.get("Origin"), APP_URL);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const json = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
   try {
@@ -383,22 +344,21 @@ Deno.serve(async (req) => {
       case "/sync": {
         // signed in → sync this household now; otherwise (the schedule) → everyone, throttled
         let household: string | undefined;
-        if (req.headers.get("Authorization")) household = (await memberFromRequest(req).catch(() => null))?.household_id;
+        if (req.headers.get("Authorization")) household = (await caller(req).catch(() => null))?.household_id;
         return json(await syncAll(false, household));
       }
       case "/start":
-        return json(await start(await memberFromRequest(req), body));
+        return json(await start(await caller(req), body));
       case "/event":
-        return json(await writeEvent(await memberFromRequest(req), body));
+        return json(await writeEvent(await caller(req), body));
       case "/us":
-        return json(await createUs(await memberFromRequest(req)));
+        return json(await createUs(await caller(req)));
       case "/disconnect":
-        return json(await disconnect(await memberFromRequest(req)));
+        return json(await disconnect(await caller(req)));
       default:
         throw new HttpError(404, "Not found");
     }
   } catch (e) {
-    const status = e instanceof HttpError ? e.status : 500;
-    return json({ error: (e as Error).message }, status);
+    return errorResponse(e, cors);
   }
 });

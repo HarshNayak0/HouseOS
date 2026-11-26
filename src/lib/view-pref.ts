@@ -1,5 +1,5 @@
 /**
- * 3D vs 2D view preference. Per device for now (localStorage); moves to settings in phase 2.
+ * Per-device display preferences (localStorage): 3D vs 2D, camera animations, evening mode.
  * Every read/write is wrapped: storage can be unavailable (private mode, blocked).
  */
 export type ViewPref = "3d" | "2d";

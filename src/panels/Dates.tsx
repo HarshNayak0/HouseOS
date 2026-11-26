@@ -4,12 +4,12 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { callCalendar, type CalendarSource } from "@/lib/calendar";
 import { dueLabel } from "@/lib/lists/dates";
-import { live, rowsKey, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
+import { insertOrUpdate, live, rowsKey, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
-import { FILES_BUCKET, uploadHouseholdFile, useSignedUrl } from "@/lib/recipes";
+import { FILES_BUCKET, uploadHouseholdFile, useSignedUrl } from "@/lib/files";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
-import { EmptyState, Sec, Trash, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
+import { formatDay, formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
+import { EmptyState, Sec, Stars, Tabs, Trash, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 export interface DateIdea extends BaseRow {
   title: string;
@@ -89,26 +89,16 @@ export function DateIdeas() {
           </button>
         }
       >
-        <div className="mb-2 flex gap-1" role="tablist" aria-label="Date ideas">
-          {(
-            [
-              ["wishlist", `Wishlist (${ideas.filter((d) => d.status === "wishlist").length})`],
-              ["planned", `Planned (${planned.length})`],
-              ["memories", "Memories"],
-            ] as [Tab, string][]
-          ).map(([t, label]) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => setTab(t)}
-              className={`min-h-9 flex-1 rounded-full text-xs font-bold ${tab === t ? "bg-teak text-white" : "border border-[#e6d9c2] bg-white"}`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          label="Date ideas"
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            ["wishlist", `Wishlist (${ideas.filter((d) => d.status === "wishlist").length})`],
+            ["planned", `Planned (${planned.length})`],
+            ["memories", "Memories"],
+          ]}
+        />
 
         {picked && tab === "wishlist" && (() => {
           const d = ideas.find((x) => x.id === picked);
@@ -379,32 +369,8 @@ function ScheduleSheet({ d, onClose }: { d: DateIdea; onClose: () => void }) {
   );
 }
 
-function Stars({ value, onChange, label }: { value: number | null; onChange?: (n: number) => void; label: string }) {
-  return (
-    <span role={onChange ? "radiogroup" : "img"} aria-label={`${label}: ${value ?? "not rated"}`} className="inline-flex">
-      {[1, 2, 3, 4, 5].map((n) =>
-        onChange ? (
-          <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} className="h-9 w-7 text-brass" onClick={() => onChange(n)}>
-            {value && n <= value ? "★" : "☆"}
-          </button>
-        ) : (
-          <span key={n} className="text-brass" aria-hidden="true">
-            {value && n <= value ? "★" : "☆"}
-          </span>
-        ),
-      )}
-    </span>
-  );
-}
-
-async function rate(householdId: string, memoryId: string, memberId: string, rating: number) {
-  const sb = supabaseBrowser()!;
-  const { error } = await sb.from("date_ratings").insert({ household_id: householdId, memory_id: memoryId, member_id: memberId, rating });
-  if (error?.code === "23505") {
-    const { error: e2 } = await sb.from("date_ratings").update({ rating }).eq("memory_id", memoryId).eq("member_id", memberId);
-    if (e2) throw e2;
-  } else if (error) throw error;
-}
+const rate = (householdId: string, memoryId: string, memberId: string, rating: number) =>
+  insertOrUpdate("date_ratings", { household_id: householdId, memory_id: memoryId, member_id: memberId, rating }, { memory_id: memoryId, member_id: memberId }, ["rating"]);
 
 function MemoryForm({ d, onClose, onSaved }: { d: DateIdea; onClose: () => void; onSaved: () => void }) {
   const qc = useQueryClient();
@@ -485,7 +451,7 @@ function MemoryItem({ mem }: { mem: Memory }) {
   return (
     <li className="relative mb-4">
       <span className="absolute top-1 -left-[23px] h-3 w-3 rounded-full border-2 border-paper bg-brass" aria-hidden="true" />
-      <p className="m-0 text-[11px] font-bold text-ink-2">{new Date(mem.happened_on + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" })}</p>
+      <p className="m-0 text-[11px] font-bold text-ink-2">{formatDay(mem.happened_on, { month: "long", day: "numeric", year: "numeric" })}</p>
       <p className="m-0 font-serif text-base font-semibold">{mem.title}</p>
       {/* eslint-disable-next-line @next/next/no-img-element -- signed URL to a private photo */}
       {url && <img src={url} alt="" className="mt-1 max-h-48 w-full rounded-lg object-cover" />}

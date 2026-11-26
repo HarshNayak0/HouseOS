@@ -6,10 +6,10 @@
  */
 import { useEffect } from "react";
 import { PERSON_COLORS } from "@/lib/colors";
+import { milestoneLabel, nextMilestone } from "../../supabase/functions/_shared/rules";
+import { callFunction } from "@/lib/functions";
 import { useHousehold } from "@/lib/household";
 import { live, useRows, type BaseRow } from "@/lib/lists/rows";
-import { supabaseBrowser } from "@/lib/supabase/browser";
-import { SUPABASE_URL } from "@/lib/supabase/config";
 import { torontoDayKey, torontoToUtc } from "@/lib/time";
 import type { Chore } from "@/panels/Chores";
 import type { DateIdea } from "@/panels/Dates";
@@ -63,18 +63,7 @@ export interface GiftIdea extends BaseRow {
   notes: string | null;
 }
 
-export async function callCalendar<T = unknown>(path: string, body: Record<string, unknown> = {}): Promise<T> {
-  const sb = supabaseBrowser();
-  const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/calendar/${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {}) },
-    body: JSON.stringify(body),
-  });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j.error ?? `Calendar error ${res.status}`);
-  return j as T;
-}
+export const callCalendar = <T = unknown,>(path: string, body: Record<string, unknown> = {}) => callFunction<T>("calendar", path, body);
 
 /** Ask for a calendar sync once when the app opens (the schedule covers the rest). */
 export function useSyncOnOpen() {
@@ -86,22 +75,9 @@ export function useSyncOnOpen() {
   }, [householdId]);
 }
 
+export { milestoneLabel };
 /** Next yearly occurrence of a milestone (Toronto day) and the number of years it marks. */
-export function nextOccurrence(base: string, today = torontoDayKey(new Date())) {
-  const [by, bm, bd] = base.split("-").map(Number);
-  const mmdd = `${String(bm).padStart(2, "0")}-${String(bm === 2 && bd === 29 ? 28 : bd).padStart(2, "0")}`;
-  let year = Number(today.slice(0, 4));
-  if (`${year}-${mmdd}` < today) year++;
-  const date = `${year}-${mmdd}`;
-  const daysAway = Math.round((Date.parse(date + "T12:00:00Z") - Date.parse(today + "T12:00:00Z")) / 86_400_000);
-  return { date, years: year - by, daysAway };
-}
-
-const ordinal = (n: number) => n + (["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0] ?? "th");
-export function milestoneLabel(kind: Milestone["kind"], years: number) {
-  if (years <= 0) return "";
-  return kind === "birthday" ? `turning ${years}` : kind === "anniversary" ? `${ordinal(years)} anniversary` : `${years} years`;
-}
+export const nextOccurrence = (base: string, today = torontoDayKey(new Date())) => nextMilestone(base, today);
 
 export type ItemKind = "event" | "task" | "chore" | "milestone" | "trip" | "date" | "renewal";
 export interface CalItem {

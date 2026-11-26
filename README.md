@@ -135,11 +135,16 @@ src/components/house/    HouseApp (header, 3D/2D switch), RoomPanel (the sheet),
 src/panels/              one file per feature: ShoppingList, Recipes, Tasks, Chores, Notes, Calendar,
                          Milestones, Dashboard, Dates, Trips, Vault
 src/scene/               the 3D house (see below)
-src/lib/                 data layer (lists/rows.ts: live rows + realtime), time, sun, calendar, vault, usage, …
+src/lib/                 data layer (lists/rows.ts: live rows, batched realtime refresh, insertOrUpdate),
+                         time (UTC ↔ Toronto, day-key helpers), files (uploads, signed links), functions
+                         (calling the Edge Functions), sun, calendar, vault, usage, …
 supabase/migrations/     database schema + RLS, applied in name order
-supabase/functions/      Edge Functions: notify, calendar, recipes, vault (+ _shared)
+supabase/functions/      Edge Functions: notify, calendar, recipes, vault. _shared/ holds what they share:
+                         server.ts (admin client, errors, "who's calling"), http.ts (CORS), crypto.ts
+                         (AES-GCM, base64), rules.ts (milestones, quiet hours: also used by the app),
+                         recipe.ts and vault.ts (parsing and validation: also used by the app)
 tests/unit/              Vitest (pure logic, crypto, recurrence, time zones)
-tests/db/                SQL tests of the RLS rules, run on a throwaway Postgres
+tests/db/                SQL tests of the RLS rules (and a guard that every trash table is emptied), on a throwaway Postgres
 tests/e2e/               Playwright: house, floor plan, settings, accessibility (axe)
 .github/workflows/       CI, deploy functions, keep-alive, backup
 docs/                    plan + cost table, decisions log, restore guide, brand
@@ -178,7 +183,7 @@ Measured at the end of phase 8 against the budgets in `SPEC.md` §3.4:
 
 | Budget | Target | Measured |
 |---|---|---|
-| Initial JS on the house route | < ~350 KB gzipped, 3D lazy-loaded | 319 KB (the 3D scene loads after, behind the progress screen) |
+| Initial JS on the house route | < ~350 KB gzipped, 3D lazy-loaded | 268 KB. The 3D scene and each room's panel load separately: a room's code loads when it opens, and all rooms are prefetched once the house has settled |
 | Draw calls / triangles | instance or merge repeats | ~200 calls, ~56k triangles (static meshes merged per material) |
 | Device pixel ratio | ≤ 2 | capped at 2 |
 | Shadows | one map ≤ 2048 px, 1024 on phones | yes |

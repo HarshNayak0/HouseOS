@@ -2,42 +2,24 @@
  * Pure helpers for the `calendar` Edge Function (Web Crypto + data mapping only; unit-tested in Node).
  */
 
+import { aesKey, b64, b64url, dec, enc, hmacSha256, keyBytes, open, seal, timingSafeEqual, unb64, unb64url } from "../_shared/crypto.ts";
+export { allowedOrigin } from "../_shared/http.ts";
+
 export const TZ = "America/Toronto";
 
-const b64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
-const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-const b64url = (bytes: Uint8Array) => b64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const unb64url = (s: string) => unb64(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4));
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-
-async function aesKey(keyB64: string) {
-  const raw = unb64(keyB64);
-  if (raw.length !== 32) throw new Error("TOKEN_ENCRYPTION_KEY must be 32 bytes (base64)");
-  return crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["encrypt", "decrypt"]);
-}
+const aesFrom = (keyB64: string) => aesKey(keyBytes(keyB64, "TOKEN_ENCRYPTION_KEY"));
 
 /** Encrypt a secret (refresh token) with AES-256-GCM. Output: "v1:" + base64(iv | ciphertext). */
 export async function encryptSecret(plain: string, keyB64: string): Promise<string> {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await aesKey(keyB64), enc.encode(plain)));
-  const out = new Uint8Array(iv.length + ct.length);
-  out.set(iv);
-  out.set(ct, iv.length);
-  return "v1:" + b64(out);
+  return "v1:" + b64(await seal(await aesFrom(keyB64), enc.encode(plain)));
 }
 
 export async function decryptSecret(stored: string, keyB64: string): Promise<string> {
   if (!stored.startsWith("v1:")) throw new Error("Unknown token format");
-  const all = unb64(stored.slice(3));
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: all.slice(0, 12) }, await aesKey(keyB64), all.slice(12));
-  return dec.decode(pt);
+  return dec.decode(await open(await aesFrom(keyB64), unb64(stored.slice(3))));
 }
 
-async function hmac(data: string, keyB64: string) {
-  const key = await crypto.subtle.importKey("raw", unb64(keyB64), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  return new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(data)));
-}
+const hmac = (data: string, keyB64: string) => hmacSha256(unb64(keyB64), data);
 
 export interface OAuthState {
   member: string;
@@ -54,11 +36,7 @@ export async function signState(s: OAuthState, keyB64: string): Promise<string> 
 export async function verifyState(token: string, keyB64: string, now = Date.now()): Promise<OAuthState | null> {
   const [body, sig] = token.split(".");
   if (!body || !sig) return null;
-  const expected = b64url(await hmac(body, keyB64));
-  if (expected.length !== sig.length) return null;
-  let diff = 0;
-  for (let i = 0; i < sig.length; i++) diff |= expected.charCodeAt(i) ^ sig.charCodeAt(i);
-  if (diff !== 0) return null;
+  if (!timingSafeEqual(b64url(await hmac(body, keyB64)), sig)) return null;
   try {
     const s = JSON.parse(dec.decode(unb64url(body))) as OAuthState;
     if (typeof s.member !== "string" || typeof s.exp !== "number" || s.exp < now) return null;
@@ -171,13 +149,4 @@ export function validateEventInput(x: unknown): EventInput | string {
     start: e.start,
     end: e.end,
   };
-}
-
-/** Allowed browser origins for the function (CORS). */
-export function allowedOrigin(origin: string | null, appUrl: string): string | null {
-  if (!origin) return null;
-  if (origin === appUrl) return origin;
-  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/.test(origin)) return origin;
-  if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return origin;
-  return null;
 }

@@ -1,11 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import type { DraftIngredient, RecipeDraft } from "../../supabase/functions/_shared/recipe";
-import { base64ToBlob, compressToWebp } from "./image";
+import { uploadRecipePhoto } from "./files";
+import { callFunction } from "./functions";
+import { base64ToBlob } from "./image";
 import type { BaseRow } from "./lists/rows";
 import { supabaseBrowser } from "./supabase/browser";
-import { SUPABASE_URL } from "./supabase/config";
 
 export type { DraftIngredient, RecipeDraft };
 
@@ -43,33 +43,8 @@ export interface RecipeRating {
   id?: string;
 }
 
-export const PHOTO_BUCKET = "recipe-photos";
-
-async function authHeaders(): Promise<Record<string, string>> {
-  const { data } = (await supabaseBrowser()?.auth.getSession()) ?? { data: { session: null } };
-  return data.session ? { Authorization: `Bearer ${data.session.access_token}` } : {};
-}
-
-export async function callRecipes<T>(path: "import" | "image", body: Record<string, unknown>): Promise<T> {
-  const res = await fetch(`${SUPABASE_URL}/functions/v1/recipes/${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...(await authHeaders()) },
-    body: JSON.stringify(body),
-  });
-  const j = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(j.error ?? `Import error ${res.status}`);
-  return j as T;
-}
-
-/** Compress and upload a photo into the household's private folder. Returns its storage path. */
-export async function uploadRecipePhoto(householdId: string, file: Blob): Promise<string> {
-  const webp = await compressToWebp(file);
-  const ext = webp.type === "image/webp" ? "webp" : webp.type === "image/png" ? "png" : "jpg";
-  const path = `${householdId}/${crypto.randomUUID()}.${ext}`;
-  const { error } = (await supabaseBrowser()?.storage.from(PHOTO_BUCKET).upload(path, webp, { contentType: webp.type, upsert: false })) ?? {};
-  if (error) throw new Error(error.message);
-  return path;
-}
+/** Calls the `recipes` Edge Function (website, caption and screenshot imports; copying a photo in). */
+export const callRecipes = <T,>(path: "import" | "image", body: Record<string, unknown>) => callFunction<T>("recipes", path, body);
 
 /** Copy an imported recipe's photo into our storage (never hotlink the original). */
 export async function importPhoto(householdId: string, imageUrl: string): Promise<string | null> {
@@ -79,35 +54,6 @@ export async function importPhoto(householdId: string, imageUrl: string): Promis
   } catch {
     return null; // the recipe is still worth saving without its photo
   }
-}
-
-/** A short-lived signed link to a private file. */
-export function useSignedUrl(bucket: string, path: string | null | undefined) {
-  return useQuery({
-    queryKey: ["signed", bucket, path],
-    enabled: !!path,
-    staleTime: 50 * 60_000,
-    queryFn: async () => {
-      const { data } = (await supabaseBrowser()?.storage.from(bucket).createSignedUrl(path!, 3600)) ?? { data: null };
-      return data?.signedUrl ?? null;
-    },
-  });
-}
-export const usePhotoUrl = (path: string | null | undefined) => useSignedUrl(PHOTO_BUCKET, path);
-
-export const FILES_BUCKET = "household-files";
-
-/** Upload a file to the household's private folder. Images are shrunk first; PDFs up to 5 MB go as they are. */
-export async function uploadHouseholdFile(householdId: string, kind: "memories" | "trips" | "bookings" | "vault", file: Blob): Promise<string> {
-  const isImage = file.type.startsWith("image/");
-  if (!isImage && file.type !== "application/pdf") throw new Error("Only photos and PDFs can be attached");
-  if (!isImage && file.size > 5 * 1024 * 1024) throw new Error("PDFs can be up to 5 MB");
-  const body = isImage ? await compressToWebp(file) : file;
-  const ext = body.type === "image/webp" ? "webp" : body.type === "image/jpeg" ? "jpg" : body.type === "image/png" ? "png" : "pdf";
-  const path = `${householdId}/${kind}/${crypto.randomUUID()}.${ext}`;
-  const { error } = (await supabaseBrowser()?.storage.from(FILES_BUCKET).upload(path, body, { contentType: body.type, upsert: false })) ?? {};
-  if (error) throw new Error(error.message);
-  return path;
 }
 
 export interface RecipeInput {

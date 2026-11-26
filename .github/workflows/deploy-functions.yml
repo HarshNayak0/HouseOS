@@ -82,5 +82,14 @@ jobs:
           curl --fail-with-body -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/notify" \
             -H "Content-Type: application/json" -d '{}'
           echo
-          curl -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/calendar/sync" \
+          curl --fail-with-body -sS -X POST "https://$PROJECT_REF.supabase.co/functions/v1/calendar/sync" \
             -H "Content-Type: application/json" -d '{}'
+          echo
+          # recipes and vault need a signed-in user, so an anonymous call must get a clean 4xx (it booted),
+          # never a 5xx (it failed to start)
+          for fn in recipes/import vault/status; do
+            code=$(curl -sS -o /tmp/out.json -w "%{http_code}" -X POST "https://$PROJECT_REF.supabase.co/functions/v1/$fn" \
+              -H "Content-Type: application/json" -H "Origin: https://veeduos.vercel.app" -d '{}')
+            echo "$fn → $code $(head -c 200 /tmp/out.json)"
+            if [ "$code" -ge 500 ]; then echo "::error::$fn failed to start"; exit 1; fi
+          done

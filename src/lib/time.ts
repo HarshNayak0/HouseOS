@@ -85,3 +85,27 @@ export function startOfTorontoDay(date: Date | string | number): Date {
   const [y, m, d] = torontoDayKey(date).split("-").map(Number);
   return torontoToUtc(y, m, d);
 }
+
+// ---------- calendar days ("YYYY-MM-DD" day keys, no time zone of their own) ----------
+// Each helper anchors the day at 12:00 UTC, so daylight-saving changes can't push it into another day.
+const noon = (key: string) => Date.parse(key + "T12:00:00Z");
+
+/** The day key `n` days after (or before) `key`. */
+export const addDays = (key: string, n: number) => new Date(noon(key) + n * 86_400_000).toISOString().slice(0, 10);
+
+/** The first day of the month `n` months after the month of `key`. */
+export function addMonths(key: string, n: number) {
+  const d = new Date(key.slice(0, 7) + "-01T12:00:00Z");
+  d.setUTCMonth(d.getUTCMonth() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Whole days from day key `a` to day key `b`. */
+export const daysBetween = (a: string, b: string) => Math.round((noon(b) - noon(a)) / 86_400_000);
+
+/** Day of the week, Monday = 0 … Sunday = 6. */
+export const weekdayMon = (key: string) => (new Date(noon(key)).getUTCDay() + 6) % 7;
+
+/** Format a day key, e.g. formatDay("2026-12-13", { weekday: "short", month: "short", day: "numeric" }). */
+export const formatDay = (key: string, o: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) =>
+  new Date(noon(key)).toLocaleDateString("en-CA", { timeZone: "UTC", ...o });

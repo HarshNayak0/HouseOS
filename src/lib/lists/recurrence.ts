@@ -5,6 +5,7 @@
  */
 import { RRule, rrulestr } from "rrule";
 import { HOME_TZ, torontoToUtc } from "@/lib/time";
+import { ordinal } from "../../../supabase/functions/_shared/rules";
 
 const WEEKDAYS = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"] as const;
 export type Weekday = (typeof WEEKDAYS)[number];
@@ -41,7 +42,6 @@ export function describeRepeat(rule: string): string {
   return r.every === 1 ? `Weekly · ${days}` : r.every === 2 ? `Every other week · ${days}` : `Every ${r.every} weeks · ${days}`;
 }
 
-const ordinal = (n: number) => n + (["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0] ?? "th");
 
 /** Toronto wall-clock parts of a UTC instant, as a "floating" Date. */
 function floating(utc: Date): Date {

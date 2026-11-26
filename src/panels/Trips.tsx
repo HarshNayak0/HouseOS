@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { live, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
-import { FILES_BUCKET, uploadHouseholdFile, useSignedUrl } from "@/lib/recipes";
-import { formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
+import { FILES_BUCKET, uploadHouseholdFile, useSignedUrl } from "@/lib/files";
+import { formatDay, formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
 import { addDays, daysBetween, packedPct, parseAmount } from "@/lib/trips";
-import { Check, EmptyState, IconButton, Sec, Trash, TrashIcon, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
+import { Check, EmptyState, IconButton, Sec, Tabs, Trash, TrashIcon, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 export interface Trip extends BaseRow {
   title: string;
@@ -58,8 +58,7 @@ interface PackingTemplate extends BaseRow {
 const KIND_ICON: Record<BookingKind, string> = { flight: "✈️", train: "🚆", bus: "🚌", hotel: "🏨", car: "🚗", activity: "🎟️", other: "📎" };
 const STARTER_TEMPLATE = ["Passports / ID", "Phone chargers", "Toiletries", "Medication", "Sunscreen", "Rain jacket", "Comfortable shoes"];
 
-const dayLabel = (day: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }) =>
-  new Date(day + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", ...opts });
+const dayLabel = (day: string, opts: Intl.DateTimeFormatOptions = { weekday: "short", month: "short", day: "numeric" }) => formatDay(day, opts);
 const money = (n: number, cur: string) => new Intl.NumberFormat("en-CA", { style: "currency", currency: cur, maximumFractionDigits: n % 1 ? 2 : 0 }).format(n);
 const num = parseAmount;
 
@@ -285,27 +284,17 @@ function TripPage({ trip, onBack }: { trip: Trip; onBack: () => void }) {
           </div>
         </div>
       </div>
-      <div className="mb-2 flex gap-1" role="tablist" aria-label="Trip sections">
-        {(
-          [
-            ["plan", "Plan"],
-            ["bookings", "Bookings"],
-            ["packing", "Packing"],
-            ["budget", "Budget"],
-          ] as [TripTab, string][]
-        ).map(([t, label]) => (
-          <button
-            key={t}
-            type="button"
-            role="tab"
-            aria-selected={tab === t}
-            onClick={() => setTab(t)}
-            className={`min-h-9 flex-1 rounded-full text-xs font-bold ${tab === t ? "bg-teak text-white" : "border border-[#e6d9c2] bg-white"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        label="Trip sections"
+        value={tab}
+        onChange={setTab}
+        tabs={[
+          ["plan", "Plan"],
+          ["bookings", "Bookings"],
+          ["packing", "Packing"],
+          ["budget", "Budget"],
+        ]}
+      />
       {tab === "plan" && <Itinerary trip={trip} />}
       {tab === "bookings" && <Bookings trip={trip} />}
       {tab === "packing" && <Packing trip={trip} />}

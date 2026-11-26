@@ -4,11 +4,10 @@ import { useState } from "react";
 import { milestoneLabel, nextOccurrence, useCalendarItems, type GiftIdea, type Milestone } from "@/lib/calendar";
 import { live, useRowMutation, useRows } from "@/lib/lists/rows";
 import { useNow } from "@/lib/lists/useNow";
-import { torontoDayKey } from "@/lib/time";
+import { formatDay, torontoDayKey } from "@/lib/time";
 import { IconButton, Sec, TrashIcon, addBtn, inputCls, linkBtn, usePeople } from "./ui";
 
-const fmtDay = (key: string, o: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" }) =>
-  new Date(key + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", ...o });
+const fmtDay = formatDay;
 const countdown = (d: number) => (d === 0 ? "Today 🎉" : d === 1 ? "Tomorrow" : `${d} days`);
 const STATUS: GiftIdea["status"][] = ["idea", "bought", "given"];
 

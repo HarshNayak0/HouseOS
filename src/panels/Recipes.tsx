@@ -4,17 +4,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { formatQty, isInstagram, scaleQty } from "../../supabase/functions/_shared/recipe";
 import { compressToWebp } from "@/lib/image";
-import { live, rowsKey, useRowMutation, useRows } from "@/lib/lists/rows";
+import { insertOrUpdate, live, rowsKey, useRowMutation, useRows } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { PHOTO_BUCKET, uploadRecipePhoto, useSignedUrl } from "@/lib/files";
 import {
   callRecipes,
   fmtMinutes,
   importPhoto,
   saveRecipe,
   totalMinutes,
-  uploadRecipePhoto,
-  usePhotoUrl,
   type Recipe,
   type RecipeDraft,
   type RecipeIngredient,
@@ -23,7 +22,7 @@ import {
   type RecipeStep,
 } from "@/lib/recipes";
 import type { ShoppingItem } from "./ShoppingList";
-import { EmptyState, IconButton, Sec, TrashIcon, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
+import { EmptyState, IconButton, Sec, Stars, TrashIcon, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 type View =
   | { mode: "list" }
@@ -70,26 +69,8 @@ export function RecipeBox() {
   );
 }
 
-function Stars({ value, onChange, label, size = "text-base" }: { value: number | null; onChange?: (v: number) => void; label: string; size?: string }) {
-  return (
-    <span role={onChange ? "radiogroup" : "img"} aria-label={`${label}: ${value ?? "not rated"}${value ? " of 5" : ""}`} className={`inline-flex ${size}`}>
-      {[1, 2, 3, 4, 5].map((n) =>
-        onChange ? (
-          <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n} star${n > 1 ? "s" : ""}`} onClick={() => onChange(n)} className="h-9 w-7 text-brass">
-            {value !== null && n <= value ? "★" : "☆"}
-          </button>
-        ) : (
-          <span key={n} className="text-brass" aria-hidden="true">
-            {value !== null && n <= Math.round(value) ? "★" : "☆"}
-          </span>
-        ),
-      )}
-    </span>
-  );
-}
-
 function Thumb({ path, className }: { path: string | null; className: string }) {
-  const { data: url } = usePhotoUrl(path);
+  const { data: url } = useSignedUrl(PHOTO_BUCKET, path);
   // eslint-disable-next-line @next/next/no-img-element -- signed URL to a private, already-compressed photo
   if (url) return <img src={url} alt="" className={`${className} object-cover`} />;
   return <div className={`${className} bg-[radial-gradient(circle_at_40%_40%,#f3e2b0,#d9a74a_55%,#a5662a)]`} aria-hidden="true" />;
@@ -216,14 +197,8 @@ function RecipeDetail({ id, onEdit, onDeleted }: { id: string; onEdit: () => voi
 
   const rate = async (rating: number | null, note?: string) => {
     if (!me) return;
-    const sb = supabaseBrowser()!;
     const row = { household_id: r.household_id, recipe_id: id, member_id: me.id, rating, note: note ?? mine?.note ?? null };
-    // insert, or update the two editable fields (an upsert would also try to rewrite the keys)
-    const { error } = await sb.from("recipe_ratings").insert(row);
-    if (error?.code === "23505") {
-      const { error: e2 } = await sb.from("recipe_ratings").update({ rating, note: row.note }).eq("recipe_id", id).eq("member_id", me.id);
-      if (e2) toast(e2.message, { tone: "error" });
-    } else if (error) toast(error.message, { tone: "error" });
+    await insertOrUpdate("recipe_ratings", row, { recipe_id: id, member_id: me.id }, ["rating", "note"]).catch((e: Error) => toast(e.message, { tone: "error" }));
     qc.invalidateQueries({ queryKey: rowsKey("recipe_ratings") });
   };
 

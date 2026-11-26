@@ -2,7 +2,7 @@
 
 import type { Chore } from "@/panels/Chores";
 import type { Note } from "@/panels/Notes";
-import { visibleNotes } from "@/panels/Notes";
+import { visibleNotes } from "./notes";
 import type { ShoppingItem } from "@/panels/ShoppingList";
 import type { DateIdea } from "@/panels/Dates";
 import type { Trip } from "@/panels/Trips";

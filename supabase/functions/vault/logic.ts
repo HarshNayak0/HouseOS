@@ -8,56 +8,25 @@
  * secrets. The database holds ciphertext and wrapped keys, never a usable key.
  */
 
-const enc = new TextEncoder();
-const dec = new TextDecoder();
-export const b64 = (bytes: Uint8Array) => {
-  let s = "";
-  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(s);
-};
-export const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
-export const b64url = (bytes: Uint8Array) => b64(bytes).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-export const unb64url = (s: string) => unb64(s.replace(/-/g, "+").replace(/_/g, "/") + "=".repeat((4 - (s.length % 4)) % 4));
+import { aesKey, b64, b64url, dec, enc, hmacSha256, keyBytes, open, seal, timingSafeEqual, unb64 } from "../_shared/crypto.ts";
+export { b64, b64url, unb64, unb64url } from "../_shared/crypto.ts";
 
-function masterBytes(masterB64: string) {
-  let raw: Uint8Array;
-  try {
-    raw = unb64(masterB64.trim());
-  } catch {
-    throw new Error("VAULT_MASTER_KEY isn't valid base64");
-  }
-  if (raw.length !== 32) throw new Error("VAULT_MASTER_KEY must be 32 random bytes (base64)");
-  return raw;
-}
-
-const aes = (raw: Uint8Array) => crypto.subtle.importKey("raw", raw as BufferSource, "AES-GCM", false, ["encrypt", "decrypt"]);
-
-async function seal(key: CryptoKey, plain: Uint8Array, aad: string) {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ct = new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv, additionalData: enc.encode(aad) }, key, plain as BufferSource));
-  const out = new Uint8Array(12 + ct.length);
-  out.set(iv);
-  out.set(ct, 12);
-  return b64(out);
-}
-
-async function open(key: CryptoKey, sealed: string, aad: string) {
-  const all = unb64(sealed);
-  return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv: all.slice(0, 12), additionalData: enc.encode(aad) }, key, all.slice(12)));
-}
+const masterBytes = (masterB64: string) => keyBytes(masterB64, "VAULT_MASTER_KEY");
+const sealB64 = async (key: CryptoKey, plain: Uint8Array, aad: string) => b64(await seal(key, plain, aad));
+const openB64 = (key: CryptoKey, sealed: string, aad: string) => open(key, unb64(sealed), aad);
 
 /** Encrypt an item's fields. Returns the wrapped data key and the ciphertext (both base64). */
 export async function encryptItem(itemId: string, fields: Record<string, string>, masterB64: string) {
   const dek = crypto.getRandomValues(new Uint8Array(32));
-  const ciphertext = await seal(await aes(dek), enc.encode(JSON.stringify(fields)), `item:${itemId}`);
-  const wrapped_dek = await seal(await aes(masterBytes(masterB64)), dek, `dek:${itemId}`);
+  const ciphertext = await sealB64(await aesKey(dek), enc.encode(JSON.stringify(fields)), `item:${itemId}`);
+  const wrapped_dek = await sealB64(await aesKey(masterBytes(masterB64)), dek, `dek:${itemId}`);
   dek.fill(0);
   return { wrapped_dek, ciphertext, key_version: 1 };
 }
 
 export async function decryptItem(itemId: string, row: { wrapped_dek: string; ciphertext: string }, masterB64: string): Promise<Record<string, string>> {
-  const dek = await open(await aes(masterBytes(masterB64)), row.wrapped_dek, `dek:${itemId}`);
-  const plain = await open(await aes(dek), row.ciphertext, `item:${itemId}`);
+  const dek = await openB64(await aesKey(masterBytes(masterB64)), row.wrapped_dek, `dek:${itemId}`);
+  const plain = await openB64(await aesKey(dek), row.ciphertext, `item:${itemId}`);
   dek.fill(0);
   return JSON.parse(dec.decode(plain));
 }
@@ -68,8 +37,7 @@ export async function decryptItem(itemId: string, row: { wrapped_dek: string; ci
  * possibilities).
  */
 export async function hashPin(pin: string, saltB64: string, masterB64: string, iterations = 150_000) {
-  const pepperKey = await crypto.subtle.importKey("raw", masterBytes(masterB64) as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const peppered = new Uint8Array(await crypto.subtle.sign("HMAC", pepperKey, enc.encode(`veedu-pin:${pin}`)));
+  const peppered = await hmacSha256(masterBytes(masterB64), `veedu-pin:${pin}`);
   const base = await crypto.subtle.importKey("raw", peppered as BufferSource, "PBKDF2", false, ["deriveBits"]);
   const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt: unb64(saltB64) as BufferSource, iterations }, base, 256);
   return `p1:${iterations}:${b64(new Uint8Array(bits))}`;
@@ -83,28 +51,12 @@ export async function verifyPin(pin: string, saltB64: string, stored: string, ma
   return timingSafeEqual(fresh, stored);
 }
 
-export function timingSafeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return d === 0;
-}
-
 /** The pause after wrong try number `n` (mirrors the SQL in vault_pin_try): 5th 15 min, 10th 1 h, 15th on 24 h. */
 export function lockoutMs(n: number): number {
   if (n >= 15) return 24 * 3_600_000;
   if (n === 10) return 3_600_000;
   if (n > 0 && n % 5 === 0) return 15 * 60_000;
   return 0;
-}
-
-/** Decode a JWT payload (only after the token has been verified with Supabase Auth). */
-export function jwtPayload(jwt: string): Record<string, unknown> {
-  try {
-    return JSON.parse(dec.decode(unb64url(jwt.split(".")[1] ?? "")));
-  } catch {
-    return {};
-  }
 }
 
 /** True when the person signed in (with Google) within the last `maxAgeSec` seconds. */
@@ -122,11 +74,3 @@ export async function sha256(s: string) {
 
 export const SESSION_IDLE_MS = 5 * 60_000;
 export const SESSION_MAX_MS = 30 * 60_000;
-
-/** Allowed browser origins (CORS) — also the origins a passkey may come from. */
-export function allowedOrigin(origin: string | null, appUrl: string): string | null {
-  if (!origin) return null;
-  if (origin === appUrl) return origin;
-  if (/^http:\/\/localhost(:\d+)?$/.test(origin)) return origin;
-  return null;
-}

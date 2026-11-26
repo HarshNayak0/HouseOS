@@ -81,5 +81,8 @@ describe("CORS", () => {
     expect(allowedOrigin("http://localhost:3000", app)).not.toBeNull();
     expect(allowedOrigin("https://evil.example", app)).toBeNull();
     expect(allowedOrigin("https://vercel.app.evil.example", app)).toBeNull();
+    // only this project's previews, not any site on vercel.app
+    expect(allowedOrigin("https://someone-else.vercel.app", app)).toBeNull();
+    expect(allowedOrigin("https://houseos-git-x-other-team.vercel.app", app)).toBeNull();
   });
 });

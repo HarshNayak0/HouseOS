@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { RoomId, RoomLabel } from "@/scene/config";
-import { PLACEHOLDERS } from "@/panels/placeholders";
-import { RoomContent, hasRealContent } from "@/panels/RoomContent";
+import { RoomContent, prefetchRooms } from "@/panels/RoomContent";
 import { useHousehold } from "@/lib/household";
+import { authEnabled } from "@/lib/supabase/config";
 
 /**
  * The 2D panel for a room. Desktop: right-hand panel. Mobile (≤720 px): bottom sheet at ~58% height
@@ -63,8 +63,13 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
 
   const label = shown ? labels[shown] : null;
   const { data } = useHousehold();
-  const real = !!shown && !!data?.me && hasRealContent(shown);
-  const ph = shown ? PLACEHOLDERS[shown] : null;
+  const signedIn = !!data?.me;
+  // once signed in and the house has settled, fetch the rooms' code in the background
+  useEffect(() => {
+    if (!signedIn) return;
+    const t = setTimeout(prefetchRooms, 4000);
+    return () => clearTimeout(t);
+  }, [signedIn]);
 
   return (
     <aside
@@ -91,7 +96,7 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
         >
           <span className="block h-[5px] w-10 rounded-full bg-[#d8c6a6]" aria-hidden="true" />
         </button>
-        {label && ph && (
+        {label && (
           <div className="flex items-start justify-between px-4 pt-1 pb-1 min-[721px]:pt-3.5">
             <div>
               <h2 ref={headingRef} tabIndex={-1} className="m-0 font-serif text-[23px] leading-tight font-semibold outline-none focus-visible:outline-none">
@@ -111,30 +116,16 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
           </div>
         )}
       </div>
-      {label && ph && (
-        <>
-          <div className="flex-1 overflow-auto px-4 pt-1 pb-5">
-            {real && shown ? (
-              <RoomContent room={shown} />
-            ) : (
-              <>
-                <div className="mt-4">
-                  <h3 className="mb-1.5 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">Coming in phase {ph.phase}</h3>
-                  <ul className="m-0 list-none p-0">
-                    {ph.items.map((it) => (
-                      <li key={it} className="border-b border-dashed border-[#e6d9c2] py-2 text-sm last:border-b-0">
-                        {it}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <p className="mt-4 border-t border-[#eadfcb] pt-2.5 text-[11.5px] text-ink-2 italic">
-                  This room is a placeholder. Nothing here is saved yet.
-                </p>
-              </>
-            )}
-          </div>
-        </>
+      {label && shown && (
+        <div className="flex-1 overflow-auto px-4 pt-1 pb-5">
+          {signedIn ? (
+            <RoomContent room={shown} />
+          ) : (
+            <p className="mt-4 text-sm text-ink-2">
+              {authEnabled ? "Sign in to use this room." : "Sign-in isn't set up here, so this is a preview of the house."}
+            </p>
+          )}
+        </div>
       )}
     </aside>
   );

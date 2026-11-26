@@ -1,5 +1,5 @@
 /** Friendly due-date labels in Toronto time. */
-import { formatToronto, torontoDayKey } from "@/lib/time";
+import { addDays, formatToronto, torontoDayKey, weekdayMon } from "@/lib/time";
 
 export function dayDiff(utc: Date | string, now = new Date()): number {
   const a = Date.parse(torontoDayKey(utc) + "T00:00:00Z"),
@@ -28,8 +28,5 @@ export function dueState(utc: Date | string | null | undefined, now = new Date()
 /** Monday 00:00 Toronto of the current week, as a day key. */
 export function weekStartKey(now = new Date()): string {
   const key = torontoDayKey(now);
-  const d = new Date(key + "T12:00:00Z");
-  const dow = (d.getUTCDay() + 6) % 7; // Mon = 0
-  d.setUTCDate(d.getUTCDate() - dow);
-  return d.toISOString().slice(0, 10);
+  return addDays(key, -weekdayMon(key));
 }

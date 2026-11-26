@@ -3,6 +3,9 @@
  * Given the household's data and the time, decide which push messages are due.
  */
 
+import { inQuietHours, milestoneLabel, nextMilestone } from "../_shared/rules.ts";
+export { inQuietHours, milestoneLabel, nextMilestone };
+
 export const TZ = "America/Toronto";
 
 export interface Member {
@@ -98,15 +101,6 @@ const parts = (d: Date) => {
   return { day: `${g("year")}-${g("month")}-${g("day")}`, hhmm: `${g("hour")}:${g("minute")}` };
 };
 
-export function inQuietHours(hhmm: string, start: string, end: string): boolean {
-  const m = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-  const t = m(hhmm),
-    s = m(start),
-    e = m(end);
-  if (s === e) return false;
-  return s < e ? t >= s && t < e : t >= s || t < e;
-}
-
 /** UTC instant of a Toronto wall-clock time on a given Toronto day. */
 export function torontoAt(day: string, hh: number, mm: number): Date {
   const [y, mo, d] = day.split("-").map(Number);
@@ -129,28 +123,6 @@ export interface Input {
   tasks: Task[];
   notes: Note[];
   milestones?: Milestone[];
-}
-
-/** Next yearly occurrence (Toronto day, on or after `today`) and how many years it marks. */
-export function nextMilestone(base: string, today: string): { date: string; years: number; daysAway: number } {
-  const [by, bm, bd] = base.split("-").map(Number);
-  const [ty] = today.split("-").map(Number);
-  const mmdd = `${String(bm).padStart(2, "0")}-${String(bd === 29 && bm === 2 ? 28 : bd).padStart(2, "0")}`;
-  let year = ty;
-  if (`${year}-${mmdd}` < today) year++;
-  const date = `${year}-${mmdd}`;
-  const daysAway = Math.round((Date.parse(date + "T12:00:00Z") - Date.parse(today + "T12:00:00Z")) / 86_400_000);
-  return { date, years: year - by, daysAway };
-}
-
-const ordinal = (n: number) => n + (["th", "st", "nd", "rd"][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10 < 4 ? n % 10 : 0] ?? "th");
-
-/** "turning 26" / "2nd anniversary" / "" */
-export function milestoneLabel(kind: Milestone["kind"], years: number): string {
-  if (years <= 0) return "";
-  if (kind === "birthday") return `turning ${years}`;
-  if (kind === "anniversary") return `${ordinal(years)} anniversary`;
-  return `${years} year${years > 1 ? "s" : ""}`;
 }
 
 /**

@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { live, useRows } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
-import { torontoDayKey } from "@/lib/time";
+import { formatDay, torontoDayKey } from "@/lib/time";
 import { daysBetween } from "@/lib/trips";
 import {
   addPasskey,
@@ -369,7 +369,7 @@ function ItemCard({ item, onEdit, onChanged }: { item: VaultItem; onEdit: () => 
         </span>
         {item.renewal_date && (
           <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${item.renewal_date >= today && daysBetween(today, item.renewal_date) <= 30 ? "bg-[#fff0c9] text-[#7d5a1a]" : "bg-[#f3ead9] text-teak"}`}>
-            {item.renewal_date < today ? "renewal passed" : `renews ${new Date(item.renewal_date + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", month: "short", day: "numeric" })}`}
+            {item.renewal_date < today ? "renewal passed" : `renews ${formatDay(item.renewal_date)}`}
           </span>
         )}
         <span aria-hidden="true" className="text-ink-2">
@@ -448,7 +448,7 @@ function FieldRow({ def, value }: { def: FieldDef; value: string }) {
         {value}
       </a>
     );
-  if (!masked && def.type === "date") body = new Date(value + "T12:00:00Z").toLocaleDateString("en-CA", { timeZone: "UTC", month: "long", day: "numeric", year: "numeric" });
+  if (!masked && def.type === "date") body = formatDay(value, { month: "long", day: "numeric", year: "numeric" });
   return (
     <div className="flex items-start gap-2 border-b border-dashed border-[#efe4cf] py-1.5 last:border-0">
       <div className="min-w-0 flex-1">
