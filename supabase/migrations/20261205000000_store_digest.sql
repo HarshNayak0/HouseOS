@@ -3,8 +3,9 @@
 -- store_visits: one row per shopping trip. Starting one pings the notify function, which tells the other
 -- person; items they add while it's open are pushed to the shopper. Visits end by hand or after 2 hours.
 -- digest_log: which morning digests went out (claimed before sending, so nobody gets two).
+-- Safe to run more than once.
 
-create table public.store_visits (
+create table if not exists public.store_visits (
   id uuid primary key default gen_random_uuid(),
   household_id uuid not null references public.households (id) on delete cascade,
   member_id uuid not null references public.members (id) on delete cascade,
@@ -15,9 +16,12 @@ create table public.store_visits (
   items_pushed_until timestamptz,   -- items added up to here were pushed to the shopper
   created_by uuid references auth.users (id) on delete set null default auth.uid()
 );
-create index store_visits_household_idx on public.store_visits (household_id, started_at desc);
+create index if not exists store_visits_household_idx on public.store_visits (household_id, started_at desc);
 
 alter table public.store_visits enable row level security;
+drop policy if exists store_visits_select on public.store_visits;
+drop policy if exists store_visits_insert on public.store_visits;
+drop policy if exists store_visits_update on public.store_visits;
 create policy store_visits_select on public.store_visits for select to authenticated using (household_id = public.my_household_id());
 create policy store_visits_insert on public.store_visits for insert to authenticated
   with check (household_id = public.my_household_id() and member_id = public.my_member_id());
@@ -29,7 +33,7 @@ grant insert (id, household_id, member_id, store) on public.store_visits to auth
 grant update (ended_at) on public.store_visits to authenticated;
 grant all on public.store_visits to service_role;
 
-create table public.digest_log (
+create table if not exists public.digest_log (
   member_id uuid not null references public.members (id) on delete cascade,
   day date not null,
   sent_at timestamptz not null default now(),
@@ -51,6 +55,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists store_visit_ping on public.store_visits;
 create trigger store_visit_ping after insert on public.store_visits for each row execute function public.store_visit_ping();
 
 -- an item added while someone else is at the store: push it to them now
@@ -72,6 +77,7 @@ begin
   return new;
 end;
 $$;
+drop trigger if exists shopping_ping_shopper on public.shopping_items;
 create trigger shopping_ping_shopper after insert on public.shopping_items for each row execute function public.shopping_ping_shopper();
 
 -- the two new notification kinds are on by default
@@ -80,7 +86,8 @@ alter table public.notification_prefs alter column kinds set default '{"notes": 
 
 do $$
 begin
-  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (select 1 from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'store_visits') then
     alter publication supabase_realtime add table public.store_visits;
   end if;
 end $$;
