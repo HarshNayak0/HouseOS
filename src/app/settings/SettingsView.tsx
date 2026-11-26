@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { INSTANCE } from "@/lib/instance";
 import { sunTimes } from "@/lib/sun";
 import { formatToronto, torontoDayKey } from "@/lib/time";
 import {
@@ -112,7 +113,7 @@ export function EveningSetting() {
   const opts: { v: EveningPref; label: string; hint: string }[] = [
     {
       v: "auto",
-      label: "Automatic, at Toronto sunset",
+      label: `Automatic, at ${INSTANCE.city} sunset`,
       hint: today ? `The lamps light at dusk (sunset today ${today.sunset}) and go out after sunrise (${today.sunrise})` : "The lamps light at dusk and go out after sunrise",
     },
     { v: "day", label: "Always daytime", hint: "The Evening button still switches it for a while" },

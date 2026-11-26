@@ -118,9 +118,9 @@ export function Onboarding() {
         )}
         {step === "invite" && (
           <div>
-            <h1 className="mt-1 mb-1 font-serif text-2xl font-semibold">Invite Prerna</h1>
+            <h1 className="mt-1 mb-1 font-serif text-2xl font-semibold">Invite your partner</h1>
             <p className="mt-0 mb-4 text-sm text-ink-2">Send her this link. You can also do this later from Settings.</p>
-            <InviteLink partnerHint="Prerna" />
+            <InviteLink />
             <button type="button" className={`${btnSecondary} mt-4 w-full`} onClick={() => setStep("calendar")}>
               Next
             </button>
@@ -141,7 +141,7 @@ export function Onboarding() {
           <div>
             <h1 className="mt-1 mb-1 font-serif text-2xl font-semibold">Notifications</h1>
             <p className="mt-0 mb-4 text-sm text-ink-2">
-              Reminders for chores, birthdays and notes from {invite ? (inviter ?? "your partner") : "Prerna"}. Quiet from 23:00 to 07:00.
+              Reminders for chores, birthdays and notes from {invite ? (inviter ?? "your partner") : "your partner"}. Quiet from 23:00 to 07:00.
             </p>
             <PushSetup householdId={data.me.household_id} memberId={data.me.id} />
             <button type="button" className={`${btnPrimary} mt-5 w-full`} onClick={() => router.replace("/")}>

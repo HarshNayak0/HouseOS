@@ -8,7 +8,7 @@
 // Google secrets live only in this function's secrets. Deployed with no JWT check; the endpoints that
 // act for a person verify their Supabase session themselves.
 import { corsHeaders } from "../_shared/http.ts";
-import { APP_URL, caller, db, env, errorResponse, HttpError, type Caller as Member } from "../_shared/server.ts";
+import { APP_URL, PREVIEW_ORIGIN, caller, db, env, errorResponse, HttpError, type Caller as Member } from "../_shared/server.ts";
 import {
   decryptSecret,
   encryptSecret,
@@ -332,7 +332,7 @@ async function disconnect(me: Member) {
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const route = url.pathname.replace(/^.*\/calendar/, "") || "/";
-  const cors = corsHeaders(req.headers.get("Origin"), APP_URL);
+  const cors = corsHeaders(req.headers.get("Origin"), APP_URL, "", PREVIEW_ORIGIN);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const json = (body: unknown, status = 200) => Response.json(body, { status, headers: cors });
   try {

@@ -1,10 +1,12 @@
 /**
- * Sunrise and sunset for Toronto, computed locally (NOAA's general solar position formulas; about
+ * Sunrise and sunset at home (this copy's city; Toronto by default), computed locally (NOAA's general solar position formulas; about
  * ±2 minutes). No network call, no API. Drives the automatic evening mode.
  */
+import { INSTANCE } from "./instance";
 import { torontoDayKey } from "./time";
 
-export const TORONTO = { lat: 43.6532, lng: -79.3832 } as const;
+/** Where the sun is computed for (named TORONTO for history; it is this copy's home). */
+export const TORONTO = { lat: INSTANCE.lat, lng: INSTANCE.lng } as const;
 const rad = Math.PI / 180;
 
 /** Sunrise and sunset (as instants) for a calendar day given as YYYY-MM-DD. */
@@ -25,13 +27,13 @@ export function sunTimes(day: string, lat: number = TORONTO.lat, lng: number = T
     0.00148 * Math.sin(3 * g);
   const cosHa = Math.cos(90.833 * rad) / (Math.cos(lat * rad) * Math.cos(decl)) - Math.tan(lat * rad) * Math.tan(decl);
   const ha = Math.acos(Math.min(1, Math.max(-1, cosHa))) / rad;
-  // minutes after 00:00 UTC on that date (sunset in Toronto's summer runs past midnight UTC)
+  // minutes after 00:00 UTC on that date (west of Greenwich, summer sunsets run past midnight UTC)
   const rise = 720 - 4 * (lng + ha) - eqtime;
   const set = 720 - 4 * (lng - ha) - eqtime;
   return { sunrise: new Date(midnight + rise * 60_000), sunset: new Date(midnight + set * 60_000) };
 }
 
-/** Evening from 20 minutes before sunset until 15 minutes after sunrise, Toronto time. */
+/** Evening from 20 minutes before sunset until 15 minutes after sunrise, home time. */
 export function isEvening(now: Date = new Date()): boolean {
   const { sunrise, sunset } = sunTimes(torontoDayKey(now));
   const t = now.getTime();

@@ -66,3 +66,19 @@ describe("day-key helpers", () => {
     expect(formatDay("2026-12-13", { weekday: "short", month: "short", day: "numeric" })).toBe("Sun, Dec 13");
   });
 });
+
+import { zonedToUtc, zoneOffsetMinutes } from "@/lib/time";
+describe("any home time zone (other couples' copies)", () => {
+  it("converts wall-clock times in India (no daylight saving)", () => {
+    expect(zonedToUtc("Asia/Kolkata", 2026, 11, 24, 8, 0).toISOString()).toBe("2026-11-24T02:30:00.000Z");
+    expect(zoneOffsetMinutes(new Date("2026-06-01T00:00:00Z"), "Asia/Kolkata")).toBe(330);
+  });
+  it("follows London's own daylight-saving dates", () => {
+    expect(zonedToUtc("Europe/London", 2026, 3, 28, 9, 0).toISOString()).toBe("2026-03-28T09:00:00.000Z"); // still GMT
+    expect(zonedToUtc("Europe/London", 2026, 3, 29, 9, 0).toISOString()).toBe("2026-03-29T08:00:00.000Z"); // BST from Mar 29
+    expect(zonedToUtc("Europe/London", 2026, 3, 29, 1, 30).toISOString()).toBe("2026-03-29T01:30:00.000Z"); // 1:30 doesn't exist: moves forward to 2:30 BST
+  });
+  it("handles zones far from UTC (Auckland)", () => {
+    expect(zonedToUtc("Pacific/Auckland", 2026, 1, 1, 0, 0).toISOString()).toBe("2025-12-31T11:00:00.000Z");
+  });
+});

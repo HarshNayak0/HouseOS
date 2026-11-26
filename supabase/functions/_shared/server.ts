@@ -3,7 +3,10 @@
 import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.119.2";
 
 export const env = (k: string) => Deno.env.get(k) ?? "";
+/** This copy's web address (the APP_URL secret, set by the deploy workflow). */
 export const APP_URL = env("APP_URL") || "https://veeduos.vercel.app";
+/** Regex for this copy's Vercel preview origins (optional). */
+export const PREVIEW_ORIGIN = env("PREVIEW_ORIGIN_REGEX");
 
 /**
  * The project's admin key. Newer projects provide SUPABASE_SECRET_KEYS (JSON: {"default": "sb_secret_…"});

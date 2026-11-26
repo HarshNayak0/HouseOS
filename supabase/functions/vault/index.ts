@@ -7,7 +7,8 @@ import {
   verifyRegistrationResponse,
 } from "npm:@simplewebauthn/server@14.0.3";
 import { allowedOrigin, corsHeaders } from "../_shared/http.ts";
-import { APP_URL, caller, db, env, errorResponse, HttpError, type Caller as Me } from "../_shared/server.ts";
+import { APP_URL, PREVIEW_ORIGIN, caller, db, env, errorResponse, HttpError, type Caller as Me } from "../_shared/server.ts";
+import { TZ } from "../_shared/tz.ts";
 import { pinProblem, validateVaultItem } from "../_shared/vault.ts";
 import {
   b64url,
@@ -97,7 +98,7 @@ async function unlockPin(m: Me, body: Record<string, unknown>) {
   const { data: p } = await db.from("vault_pins").select("salt, pin_hash, locked_until").eq("member_id", m.id).maybeSingle();
   if (!p) throw new HttpError(400, "Set a PIN first");
   const paused = (until: string | null) =>
-    new HttpError(429, `Too many tries. The PIN works again after ${until ? new Date(until).toLocaleString("en-CA", { timeZone: "America/Toronto", weekday: "short", hour: "numeric", minute: "2-digit" }) : "a while"}, or use your passkey`);
+    new HttpError(429, `Too many tries. The PIN works again after ${until ? new Date(until).toLocaleString("en-CA", { timeZone: TZ, weekday: "short", hour: "numeric", minute: "2-digit" }) : "a while"}, or use your passkey`);
   // count the try first (atomically), then check the PIN
   const { data: attempt } = await db.rpc("vault_pin_try", { p_member: m.id });
   if (attempt === null || attempt === undefined) throw paused(p.locked_until);
@@ -315,8 +316,8 @@ async function fileLink(req: Request, m: Me, body: Record<string, unknown>) {
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const route = url.pathname.replace(/^.*\/vault/, "") || "/";
-  const origin = allowedOrigin(req.headers.get("Origin"), APP_URL);
-  const cors = corsHeaders(origin, APP_URL, "x-vault-token");
+  const origin = allowedOrigin(req.headers.get("Origin"), APP_URL, PREVIEW_ORIGIN);
+  const cors = corsHeaders(origin, APP_URL, "x-vault-token", PREVIEW_ORIGIN);
   const headers = { ...cors, "Cache-Control": "no-store" };
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const json = (body: unknown, status = 200) => Response.json(body, { status, headers });

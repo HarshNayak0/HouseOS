@@ -12,7 +12,7 @@ update public.notification_prefs set kinds = '{"notes": true, "chores": true, "t
 alter table public.notification_prefs alter column kinds set default '{"notes": true, "chores": true, "tasks": true}'::jsonb;
 
 -- Ask the notify function to run now. Uses pg_net (asynchronous, so it never slows down a save).
--- The function URL is this project's; update it if the project ever changes.
+-- (The address comes from app_config, filled in by the notify function itself: see 20261206_instance_config.)
 create or replace function public.ping_notify()
 returns void
 language plpgsql
@@ -21,8 +21,10 @@ set search_path = ''
 as $$
 begin
   if to_regproc('net.http_post') is null then return; end if; -- pg_net not installed (e.g. local tests)
+  -- the address lives in app_config (20261206_instance_config); until then, do nothing
+  if to_regclass('public.app_config') is null or not exists (select 1 from public.app_config where key = 'functions_url') then return; end if;
   perform net.http_post(
-    url := 'https://zdqiagmbyhfzofqauclj.supabase.co/functions/v1/notify',
+    url := (select value from public.app_config where key = 'functions_url') || '/' || 'notify',
     body := '{}'::jsonb,
     headers := '{"Content-Type": "application/json"}'::jsonb,
     timeout_milliseconds := 10000

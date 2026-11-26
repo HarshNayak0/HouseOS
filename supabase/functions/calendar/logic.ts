@@ -3,9 +3,9 @@
  */
 
 import { aesKey, b64, b64url, dec, enc, hmacSha256, keyBytes, open, seal, timingSafeEqual, unb64, unb64url } from "../_shared/crypto.ts";
+import { TZ, zonedAt } from "../_shared/tz.ts";
 export { allowedOrigin } from "../_shared/http.ts";
-
-export const TZ = "America/Toronto";
+export { TZ };
 
 const aesFrom = (keyB64: string) => aesKey(keyBytes(keyB64, "TOKEN_ENCRYPTION_KEY"));
 
@@ -47,16 +47,8 @@ export async function verifyState(token: string, keyB64: string, now = Date.now(
   }
 }
 
-/** UTC instant for 00:00 Toronto on a YYYY-MM-DD day (handles DST). */
-export function torontoMidnight(day: string): Date {
-  const [y, m, d] = day.split("-").map(Number);
-  for (const off of [4, 5]) {
-    const c = new Date(Date.UTC(y, m - 1, d, off, 0));
-    const hh = new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "2-digit", hourCycle: "h23" }).format(c);
-    if (hh === "00") return c;
-  }
-  return new Date(Date.UTC(y, m - 1, d, 5, 0));
-}
+/** UTC instant for 00:00 home time on a YYYY-MM-DD day (handles DST; named for history). */
+export const torontoMidnight = (day: string): Date => zonedAt(day, 0, 0);
 
 export interface GoogleEvent {
   id: string;

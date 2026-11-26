@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { HOME_TZ } from "@/lib/time";
 import { LIMITS, WARN_AT, formatBytes, useCheckUsageNow, useUsage } from "@/lib/usage";
 import { Section } from "./AccountSettings";
 
@@ -45,7 +46,7 @@ export function UsageSettings() {
           <Meter label="Database" used={data.db_bytes} limit={LIMITS.db} />
           <Meter label={`Photos and files (${data.storage_files})`} used={data.storage_bytes} limit={LIMITS.storage} />
           <p className="m-0 text-xs text-ink-2">
-            Last checked {new Date(data.taken_at).toLocaleString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            Last checked {new Date(data.taken_at).toLocaleString("en-CA", { timeZone: HOME_TZ, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
             <br />
             Checked automatically on the 1st of each month. You&apos;ll see a warning on the dashboard at {WARN_AT * 100}%.
           </p>

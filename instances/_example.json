@@ -1,0 +1,12 @@
+{
+  "slug": "example",
+  "couple": "Asha & Rohan",
+  "appUrl": "https://asha-rohan-veedu.vercel.app",
+  "supabaseProjectRef": "abcdefghijklmnopqrst",
+  "timeZone": "America/Toronto",
+  "city": "Toronto",
+  "lat": 43.6532,
+  "lng": -79.3832,
+  "previewOriginRegex": "",
+  "enabled": false
+}

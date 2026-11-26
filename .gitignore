@@ -47,3 +47,7 @@ next-env.d.ts
 /test-results/
 /playwright-report/
 /blob-report/
+
+# couples: per-copy secrets (scripts/new-couple.mjs), never committed
+/.couples/
+/supabase/.temp/

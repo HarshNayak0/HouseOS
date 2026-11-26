@@ -4,6 +4,7 @@
 // Deployed by .github/workflows/deploy-functions.yml (no JWT check; it takes no input).
 import webpush from "npm:web-push@3.6.7";
 import { adminKey, db, env } from "../_shared/server.ts";
+import { zonedDayTime } from "../_shared/tz.ts";
 import {
   planReminders,
   torontoAt,
@@ -22,7 +23,7 @@ import {
   type Trip,
 } from "./logic.ts";
 
-const torontoToday = () => new Intl.DateTimeFormat("en-CA", { timeZone: "America/Toronto", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+const torontoToday = () => zonedDayTime(new Date()).day;
 const plusDays = (day: string, n: number) => new Date(Date.parse(day + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
 
 Deno.serve(async () => {
@@ -32,6 +33,12 @@ Deno.serve(async () => {
   if (!pub || !priv || !subject) return Response.json({ error: "VAPID secrets missing" }, { status: 500 });
   webpush.setVapidDetails(subject, pub, priv);
   if (!adminKey()) return Response.json({ error: "No secret/service key available to the function" }, { status: 500 });
+
+  // Tell the database where the functions live (the pg_cron and trigger pings read it). A new copy
+  // gets this on its first run; afterwards it's a no-op. Ignored before the app_config migration.
+  const functionsUrl = `${env("SUPABASE_URL")}/functions/v1`;
+  const { data: cfg, error: cfgErr } = await db.from("app_config").select("value").eq("key", "functions_url").maybeSingle();
+  if (!cfgErr && cfg?.value !== functionsUrl) await db.from("app_config").upsert({ key: "functions_url", value: functionsUrl, updated_at: new Date().toISOString() });
 
   const now = new Date();
   const since = new Date(now.getTime() - 3 * 86_400_000).toISOString();

@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Veedu · വീട്",
     short_name: "Veedu",
-    description: "Harsh and Prerna's home: lists, chores, calendars, date ideas and trips.",
+    description: "Your home for two: lists, chores, calendars, date ideas and trips.",
     start_url: "/",
     scope: "/",
     display: "standalone",

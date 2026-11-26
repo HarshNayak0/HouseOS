@@ -276,6 +276,19 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
 - **Limits:** this protects against a leaked database or backup. Someone who controls the Supabase account can still read the vault, because the key is there, so don't store bank passwords. If `VAULT_MASTER_KEY` is lost, the vault can't be read: keep a copy in your password manager (see `docs/RESTORE.md`).
 - **Tests:** `tests/unit/vault.test.ts` covers encryption, tampering, PINs and validation. `tests/db/vault.test.sql` checks that app users can't reach the secret tables and covers the PIN pause.
 
+## Copies for other couples
+
+The same code runs as many copies: this repo's original (veeduos) plus one per couple, each on **the
+couple's own free accounts** (Supabase, Vercel, Google Cloud, optional Gemini).
+- **Settings:** each copy's settings are in `instances/<slug>.json` (web address, Supabase project, time zone, city). Its secrets live in the GitHub environment `couple-<slug>`.
+- **Keys:** `scripts/new-couple.mjs` generates each copy's keys and uploads its secrets.
+- **Deploying:** **Actions → Couples** deploys a copy: database migrations, sign-in settings, functions, Vercel settings and the web app.
+- **Keep-alive and backups:** the same workflow keeps every copy awake and backs each one up weekly.
+- **Defaults:** without settings, a build behaves exactly like the original (Toronto, veeduos).
+- **Releases:** go to the original first; run the Couples deploy once it has worked for a few days.
+
+The whole process is a Claude skill: `.claude/skills/veedu-new-couple/`. Ask Claude to "set up Veedu for a new couple". It covers the first conversation with the couple, setting up their accounts click by click, the first deploy, checks, onboarding, handover and agreement templates, updates, backups and troubleshooting, plus how Veedu was built. See also `instances/README.md`.
+
 ## Everyday shortcuts
 
 - **Quick add (+):** the round button at the bottom right of the house fans out into Grocery, Task and Note. Each takes one line and saves straight to the list, the office or the notes board (same duplicate rules as the shopping list). It's hidden while a room's panel is open, since each room has its own add box.

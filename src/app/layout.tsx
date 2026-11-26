@@ -24,7 +24,7 @@ const manjari = Manjari({
 
 export const metadata: Metadata = {
   title: "Veedu · വീട്",
-  description: "Our home, Harsh and Prerna's.",
+  description: "Our home, for the two of us.",
   appleWebApp: { capable: true, title: "Veedu", statusBarStyle: "default" },
 };
 

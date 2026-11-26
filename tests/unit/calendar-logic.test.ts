@@ -74,15 +74,23 @@ describe("event mapping", () => {
 });
 
 describe("CORS", () => {
-  it("allows the app, Vercel previews and localhost only", () => {
-    const app = "https://veeduos.vercel.app";
-    expect(allowedOrigin(app, app)).toBe(app);
-    expect(allowedOrigin("https://houseos-git-x-harsh-s-vercel.vercel.app", app)).not.toBeNull();
-    expect(allowedOrigin("http://localhost:3000", app)).not.toBeNull();
-    expect(allowedOrigin("https://evil.example", app)).toBeNull();
-    expect(allowedOrigin("https://vercel.app.evil.example", app)).toBeNull();
+  const app = "https://veeduos.vercel.app";
+  const previews = "https://houseos-[a-z0-9-]+-harsh-s-vercel\\.vercel\\.app";
+  it("allows the app, this copy's Vercel previews and localhost only", () => {
+    expect(allowedOrigin(app, app, previews)).toBe(app);
+    expect(allowedOrigin("https://houseos-git-x-harsh-s-vercel.vercel.app", app, previews)).not.toBeNull();
+    expect(allowedOrigin("http://localhost:3000", app, previews)).not.toBeNull();
+    expect(allowedOrigin("https://evil.example", app, previews)).toBeNull();
+    expect(allowedOrigin("https://vercel.app.evil.example", app, previews)).toBeNull();
     // only this project's previews, not any site on vercel.app
-    expect(allowedOrigin("https://someone-else.vercel.app", app)).toBeNull();
-    expect(allowedOrigin("https://houseos-git-x-other-team.vercel.app", app)).toBeNull();
+    expect(allowedOrigin("https://someone-else.vercel.app", app, previews)).toBeNull();
+    expect(allowedOrigin("https://houseos-git-x-other-team.vercel.app", app, previews)).toBeNull();
+    // the pattern must match the whole origin
+    expect(allowedOrigin("https://houseos-git-x-harsh-s-vercel.vercel.app.evil.example", app, previews)).toBeNull();
+  });
+  it("allows no previews when the copy has no pattern, and survives a broken one", () => {
+    expect(allowedOrigin("https://houseos-git-x-harsh-s-vercel.vercel.app", app)).toBeNull();
+    expect(allowedOrigin("https://x.vercel.app", app, "([")).toBeNull();
+    expect(allowedOrigin(app, app, "([")).toBe(app);
   });
 });

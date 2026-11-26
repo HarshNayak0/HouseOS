@@ -247,8 +247,10 @@ set search_path = ''
 as $$
 begin
   if to_regproc('net.http_post') is null then return; end if;
+  -- the address lives in app_config (20261206_instance_config); until then, do nothing
+  if to_regclass('public.app_config') is null or not exists (select 1 from public.app_config where key = 'functions_url') then return; end if;
   perform net.http_post(
-    url := 'https://zdqiagmbyhfzofqauclj.supabase.co/functions/v1/' || p_name,
+    url := (select value from public.app_config where key = 'functions_url') || '/' || p_name,
     body := '{}'::jsonb,
     headers := '{"Content-Type": "application/json"}'::jsonb,
     timeout_milliseconds := 30000

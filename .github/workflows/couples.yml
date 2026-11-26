@@ -1,0 +1,213 @@
+# Other couples' copies of Veedu (instances/<slug>.json + a GitHub environment "couple-<slug>" with
+# their secrets; see instances/README.md). Each copy runs on the couple's own free accounts.
+#
+#   Deploy:     Actions → Couples → Run workflow → couple: <slug> or "all", action: deploy
+#               (do this after the change has been running on the original copy, veeduos, for a while)
+#   Keep-alive: automatic every 3 days (free Supabase projects pause after 7 idle days)
+#   Backup:     automatic every Sunday, encrypted with the couple's passphrase, kept 56 days
+#
+# The original copy keeps its own workflows (deploy-functions, keepalive, backup) and Vercel's Git deploys.
+name: Couples
+
+on:
+  workflow_dispatch:
+    inputs:
+      couple:
+        description: "Which couple (the slug, i.e. instances/<slug>.json), or all"
+        default: all
+      action:
+        description: What to do
+        type: choice
+        options: [deploy, keep-alive, backup]
+        default: deploy
+  schedule:
+    - cron: "29 9 */3 * *" # keep-alive
+    - cron: "11 8 * * 0" # weekly backup (Sunday)
+
+permissions:
+  contents: read
+
+concurrency:
+  group: couples-${{ github.event.inputs.couple || 'scheduled' }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      action: ${{ steps.plan.outputs.action }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: plan
+        env:
+          WANT: ${{ github.event.inputs.couple || 'all' }}
+          ACTION: ${{ github.event.inputs.action || (github.event.schedule == '11 8 * * 0' && 'backup' || 'keep-alive') }}
+        run: |
+          node -e '
+            const fs = require("fs");
+            const want = process.env.WANT.trim();
+            const all = fs.readdirSync("instances").filter((f) => f.endsWith(".json") && !f.startsWith("_"))
+              .map((f) => JSON.parse(fs.readFileSync("instances/" + f, "utf8")));
+            const picked = all.filter((c) => (want === "all" ? c.enabled : c.slug === want));
+            if (want !== "all" && !picked.length) { console.error(`No instances/${want}.json`); process.exit(1); }
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${JSON.stringify({ include: picked })}\n`);
+            console.log(`${process.env.ACTION}: ${picked.map((c) => c.slug).join(", ") || "(no couples)"}`);
+          '
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+
+  couple:
+    needs: plan
+    if: needs.plan.outputs.matrix != '{"include":[]}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    environment: couple-${{ matrix.slug }}
+    env:
+      ACTION: ${{ needs.plan.outputs.action }}
+      PROJECT_REF: ${{ matrix.supabaseProjectRef }}
+      SUPABASE_URL: https://${{ matrix.supabaseProjectRef }}.supabase.co
+      APP_URL: ${{ matrix.appUrl }}
+      HOME_TZ: ${{ matrix.timeZone }}
+      HOME_CITY: ${{ matrix.city }}
+      HOME_LAT: ${{ matrix.lat }}
+      HOME_LNG: ${{ matrix.lng }}
+      PREVIEW_ORIGIN_REGEX: ${{ matrix.previewOriginRegex }}
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
+      TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      VAULT_MASTER_KEY: ${{ secrets.VAULT_MASTER_KEY }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      # ---------- keep-alive ----------
+      - name: Keep the database awake
+        if: env.ACTION == 'keep-alive'
+        run: |
+          curl --fail --silent --show-error --retry 3 --retry-delay 10 -X POST "$SUPABASE_URL/rest/v1/rpc/ping" \
+            -H "apikey: $SUPABASE_ANON_KEY" -H "Content-Type: application/json" -d '{}'
+
+      # ---------- backup ----------
+      - if: env.ACTION == 'backup' || env.ACTION == 'deploy'
+        uses: supabase/setup-cli@v1
+        with:
+          version: 3.3.0
+      - name: Back up (encrypted)
+        if: env.ACTION == 'backup'
+        run: |
+          [ -n "$SUPABASE_DB_URL" ] && [ -n "$BACKUP_PASSPHRASE" ] || { echo "::error::SUPABASE_DB_URL and BACKUP_PASSPHRASE are needed"; exit 1; }
+          mkdir -p dump
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f dump/data.sql --use-copy --data-only
+          STAMP=$(date -u +%Y-%m-%d)
+          tar -czf "veedu-${{ matrix.slug }}-$STAMP.tar.gz" -C dump .
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --symmetric --cipher-algo AES256 \
+            -o "veedu-${{ matrix.slug }}-$STAMP.tar.gz.gpg" "veedu-${{ matrix.slug }}-$STAMP.tar.gz"
+          rm -rf dump "veedu-${{ matrix.slug }}-$STAMP.tar.gz"
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+      - if: env.ACTION == 'backup'
+        uses: actions/upload-artifact@v7
+        with:
+          name: veedu-backup-${{ matrix.slug }}-${{ env.STAMP }}
+          path: veedu-*.tar.gz.gpg
+          retention-days: 56
+          if-no-files-found: error
+
+      # ---------- deploy ----------
+      - if: env.ACTION == 'deploy'
+        uses: actions/checkout@v7
+      - name: Check the couple's secrets
+        if: env.ACTION == 'deploy'
+        run: |
+          missing=""
+          for k in SUPABASE_ACCESS_TOKEN SUPABASE_DB_URL SUPABASE_ANON_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID \
+                   VAPID_PUBLIC_KEY VAPID_PRIVATE_KEY VAPID_SUBJECT TOKEN_ENCRYPTION_KEY VAULT_MASTER_KEY; do
+            [ -n "${!k}" ] || missing="$missing $k"
+          done
+          if [ -n "$missing" ]; then echo "::error::Missing in the couple-${{ matrix.slug }} environment:$missing (run scripts/new-couple.mjs --check)"; exit 1; fi
+      - name: Database (apply new migrations)
+        if: env.ACTION == 'deploy'
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --include-all --yes
+      - name: Sign-in settings (Google provider, site URL, redirects)
+        if: env.ACTION == 'deploy'
+        run: |
+          body=$(jq -n --arg site "$APP_URL" --arg id "$GOOGLE_CLIENT_ID" --arg secret "$GOOGLE_CLIENT_SECRET" \
+            '{site_url: $site, uri_allow_list: ($site + "/**,http://localhost:3000/**"),
+              external_google_enabled: true, external_google_client_id: $id, external_google_secret: $secret}')
+          code=$(curl -sS -o /tmp/auth.json -w "%{http_code}" -X PATCH "https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth" \
+            -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" -H "Content-Type: application/json" -d "$body")
+          if [ "$code" -ge 300 ]; then echo "::error::Supabase auth settings → $code: $(head -c 300 /tmp/auth.json)"; exit 1; fi
+          echo "Supabase auth settings updated ($code)"
+      - name: Functions (secrets + deploy)
+        if: env.ACTION == 'deploy'
+        run: |
+          args=(VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="$VAPID_SUBJECT"
+                APP_URL="$APP_URL" HOME_TZ="$HOME_TZ" GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET"
+                TOKEN_ENCRYPTION_KEY="$TOKEN_ENCRYPTION_KEY" VAULT_MASTER_KEY="$VAULT_MASTER_KEY")
+          [ -n "$PREVIEW_ORIGIN_REGEX" ] && args+=(PREVIEW_ORIGIN_REGEX="$PREVIEW_ORIGIN_REGEX")
+          [ -n "$GEMINI_API_KEY" ] && args+=(GEMINI_API_KEY="$GEMINI_API_KEY")
+          supabase secrets set --yes --project-ref "$PROJECT_REF" "${args[@]}"
+          for fn in notify calendar recipes vault; do
+            supabase functions deploy "$fn" --yes --project-ref "$PROJECT_REF" --no-verify-jwt
+          done
+      - name: Functions start (and notify records its address)
+        if: env.ACTION == 'deploy'
+        run: |
+          curl --fail-with-body -sS -X POST "$SUPABASE_URL/functions/v1/notify" -H "Content-Type: application/json" -d '{}'; echo
+          curl --fail-with-body -sS -X POST "$SUPABASE_URL/functions/v1/calendar/sync" -H "Content-Type: application/json" -d '{}'; echo
+          for fn in recipes/import vault/status; do
+            code=$(curl -sS -o /tmp/out.json -w "%{http_code}" -X POST "$SUPABASE_URL/functions/v1/$fn" \
+              -H "Content-Type: application/json" -H "Origin: $APP_URL" -d '{}')
+            echo "$fn → $code $(head -c 200 /tmp/out.json)"
+            if [ "$code" -ge 500 ]; then echo "::error::$fn failed to start"; exit 1; fi
+          done
+      - name: Web app settings (Vercel environment variables)
+        if: env.ACTION == 'deploy'
+        run: |
+          team=""; case "$VERCEL_ORG_ID" in team_*) team="&teamId=$VERCEL_ORG_ID";; esac
+          put() { # name value type
+            body=$(jq -n --arg k "$1" --arg v "$2" --arg t "$3" '{key: $k, value: $v, type: $t, target: ["production", "preview"]}')
+            code=$(curl -sS -o /tmp/env.json -w "%{http_code}" -X POST "https://api.vercel.com/v10/projects/$VERCEL_PROJECT_ID/env?upsert=true$team" \
+              -H "Authorization: Bearer $VERCEL_TOKEN" -H "Content-Type: application/json" -d "$body")
+            if [ "$code" -ge 300 ]; then echo "::error::Vercel env $1 → $code: $(head -c 300 /tmp/env.json)"; exit 1; fi
+          }
+          put NEXT_PUBLIC_SUPABASE_URL "$SUPABASE_URL" encrypted
+          put NEXT_PUBLIC_SUPABASE_ANON_KEY "$SUPABASE_ANON_KEY" encrypted
+          put NEXT_PUBLIC_VAPID_PUBLIC_KEY "$VAPID_PUBLIC_KEY" encrypted
+          put NEXT_PUBLIC_HOME_TZ "$HOME_TZ" encrypted
+          put NEXT_PUBLIC_HOME_CITY "$HOME_CITY" encrypted
+          put NEXT_PUBLIC_HOME_LAT "$HOME_LAT" encrypted
+          put NEXT_PUBLIC_HOME_LNG "$HOME_LNG" encrypted
+          put VAPID_PRIVATE_KEY "$VAPID_PRIVATE_KEY" encrypted
+          put VAPID_SUBJECT "$VAPID_SUBJECT" encrypted
+          echo "Vercel settings updated"
+      - if: env.ACTION == 'deploy'
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Web app (build and deploy to the couple's Vercel)
+        if: env.ACTION == 'deploy'
+        run: |
+          npm ci
+          npx --yes vercel@65.12.1 pull --yes --environment=production --token="$VERCEL_TOKEN"
+          npx --yes vercel@65.12.1 build --prod --token="$VERCEL_TOKEN"
+          url=$(npx --yes vercel@65.12.1 deploy --prebuilt --prod --token="$VERCEL_TOKEN")
+          echo "Deployed: $url"
+          code=$(curl -sS -o /dev/null -w "%{http_code}" "$APP_URL/api/health")
+          echo "$APP_URL/api/health → $code"
+          [ "$code" = "200" ] || { echo "::warning::$APP_URL didn't answer 200 yet (check the project's production domain matches appUrl)"; }

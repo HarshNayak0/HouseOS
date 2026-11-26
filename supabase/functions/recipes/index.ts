@@ -5,7 +5,7 @@
 // Screenshots (up to 4): read by Gemini; they're not stored.
 // Only recipe content is ever sent to Gemini. Limits: 20 imports a day, 60 a month per household.
 import { corsHeaders } from "../_shared/http.ts";
-import { APP_URL, caller, db, env, errorResponse, HttpError } from "../_shared/server.ts";
+import { APP_URL, PREVIEW_ORIGIN, caller, db, env, errorResponse, HttpError } from "../_shared/server.ts";
 import {
   captionByRules,
   extractJsonLdRecipe,
@@ -251,7 +251,7 @@ async function fetchImage(body: Record<string, unknown>) {
 }
 
 Deno.serve(async (req) => {
-  const cors = corsHeaders(req.headers.get("Origin"), APP_URL);
+  const cors = corsHeaders(req.headers.get("Origin"), APP_URL, "", PREVIEW_ORIGIN);
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
   const json = (b: unknown, status = 200) => Response.json(b, { status, headers: cors });
   const route = new URL(req.url).pathname.replace(/^.*\/recipes/, "") || "/";

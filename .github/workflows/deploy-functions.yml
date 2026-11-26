@@ -21,7 +21,12 @@ jobs:
     timeout-minutes: 10
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      PROJECT_REF: zdqiagmbyhfzofqauclj
+      # This repository's own copy (the original). Other couples' copies deploy with couples.yml.
+      # Each can be overridden with a repository variable (Settings → Secrets and variables → Variables).
+      PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || 'zdqiagmbyhfzofqauclj' }}
+      APP_URL: ${{ vars.APP_URL || 'https://veeduos.vercel.app' }}
+      HOME_TZ: ${{ vars.HOME_TZ || 'America/Toronto' }}
+      PREVIEW_ORIGIN_REGEX: ${{ vars.PREVIEW_ORIGIN_REGEX || 'https://houseos-[a-z0-9-]+-harsh-s-vercel\.vercel\.app' }}
       VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
       VAPID_SUBJECT: ${{ secrets.VAPID_SUBJECT }}
@@ -52,7 +57,7 @@ jobs:
           if [ -z "$VAPID_PUBLIC_KEY" ] || [ -z "$VAPID_PRIVATE_KEY" ] || [ -z "$VAPID_SUBJECT" ]; then
             echo "::error::Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT as GitHub secrets"; exit 1
           fi
-          args=(VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="$VAPID_SUBJECT" APP_URL="https://veeduos.vercel.app")
+          args=(VAPID_PUBLIC_KEY="$VAPID_PUBLIC_KEY" VAPID_PRIVATE_KEY="$VAPID_PRIVATE_KEY" VAPID_SUBJECT="$VAPID_SUBJECT" APP_URL="$APP_URL" HOME_TZ="$HOME_TZ" PREVIEW_ORIGIN_REGEX="$PREVIEW_ORIGIN_REGEX")
           if [ -n "$GOOGLE_CLIENT_ID" ] && [ -n "$GOOGLE_CLIENT_SECRET" ] && [ -n "$TOKEN_ENCRYPTION_KEY" ]; then
             args+=(GOOGLE_CLIENT_ID="$GOOGLE_CLIENT_ID" GOOGLE_CLIENT_SECRET="$GOOGLE_CLIENT_SECRET" TOKEN_ENCRYPTION_KEY="$TOKEN_ENCRYPTION_KEY")
           else
@@ -89,7 +94,7 @@ jobs:
           # never a 5xx (it failed to start)
           for fn in recipes/import vault/status; do
             code=$(curl -sS -o /tmp/out.json -w "%{http_code}" -X POST "https://$PROJECT_REF.supabase.co/functions/v1/$fn" \
-              -H "Content-Type: application/json" -H "Origin: https://veeduos.vercel.app" -d '{}')
+              -H "Content-Type: application/json" -H "Origin: $APP_URL" -d '{}')
             echo "$fn → $code $(head -c 200 /tmp/out.json)"
             if [ "$code" -ge 500 ]; then echo "::error::$fn failed to start"; exit 1; fi
           done

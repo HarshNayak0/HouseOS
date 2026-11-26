@@ -4,6 +4,13 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-26 | Reusable copies: one codebase, one deployment per couple on the couple's own free accounts; settings in `instances/<slug>.json`, secrets in GitHub environments, `couples.yml` deploys with the CLIs (no Git link to their Vercel) | Keeps each copy at $0 and their data in their hands; two users per Google project need no verification; one code path to maintain |
+| 2026-11-26 | Per-copy settings default to the original's values (Toronto, veeduos, its project ref) | The live copy needs no reconfiguration and behaves exactly as before |
+| 2026-11-26 | Time zone generalised: `zonedToUtc` (app) and `_shared/tz.ts` (functions) work for any IANA zone; the "toronto…" names stay as aliases | The functions' old offsets were Toronto-only (−4/−5) |
+| 2026-11-26 | Functions' address in `app_config`, written by `notify` itself; old migrations no longer contain the original's URL; the live database's address is copied over by the migration | A new copy must never ping the original project; no manual SQL per copy |
+| 2026-11-26 | Function access for previews is a per-copy regex (`PREVIEW_ORIGIN_REGEX`), none by default | The Vercel team name was hard-coded |
+| 2026-11-26 | Couples' migrations via `supabase db push` (tested on a fresh database: all 14 apply, a second push is a no-op); the original keeps SQL-editor runs | The original has no migration history; `migration repair` can switch it later |
+| 2026-11-26 | The process is a project Claude skill (`.claude/skills/veedu-new-couple`) with references and templates | Repeatable setup and care, by the owner or Claude |
 | 2026-11-26 | On touch screens every text field is ≥16 px (one unlayered CSS rule); `touch-action: manipulation` on the page | iPhone Safari zooms into fields under 16 px and stays zoomed, cropping the top and right; double-tap zoom on quick taps did the same. Pinch-to-zoom is kept (accessibility), no `maximum-scale` |
 | 2026-11-26 | Quick add: one floating + over the house that fans out into Grocery / Task / Note; hidden while a panel is open | Capture in one tap from anywhere; rooms already have their own add box |
 | 2026-11-26 | "I'm at the store": `store_visits` + DB triggers ping `notify`; partner gets "X is at Y", shopper gets items added during the visit; ends by hand or after 2 h | Push needs the server (the partner's subscriptions aren't readable by the app); claims prevent repeats |

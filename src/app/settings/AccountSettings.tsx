@@ -9,6 +9,7 @@ import { InviteLink } from "@/components/account/InviteLink";
 import { PushSetup } from "@/components/account/PushSetup";
 import { btnPrimary, btnSecondary, input } from "@/components/ui/Card";
 import { PERSON_COLORS, type PersonColor } from "@/lib/colors";
+import { INSTANCE } from "@/lib/instance";
 import { householdKey, useHousehold, type Member } from "@/lib/household";
 import { memberProfileSchema, quietHoursSchema, roomLabelsSchema } from "@/lib/schemas";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -136,7 +137,7 @@ function Household({ householdId, partner, bothColor }: { householdId: string; p
       ) : (
         <div className="mb-2">
           <p className="mt-0 mb-2 text-sm text-ink-2">It&apos;s just you so far.</p>
-          <InviteLink partnerHint="Prerna" />
+          <InviteLink />
         </div>
       )}
       <p className="mt-4 mb-2 text-sm font-bold">Colour for things you share</p>
@@ -235,7 +236,7 @@ function Notifications({ me }: { me: Member }) {
             ))}
           </fieldset>
           <fieldset className="m-0 mt-2 border-0 p-0">
-            <legend className="mb-1 text-sm font-bold">Quiet hours (Toronto time)</legend>
+            <legend className="mb-1 text-sm font-bold">Quiet hours ({INSTANCE.city} time)</legend>
             <div className="flex items-center gap-2">
               <input type="time" aria-label="Quiet from" className={`${input} w-32`} value={form.quiet_start} onChange={(e) => setForm({ ...form, quiet_start: e.target.value })} />
               <span>to</span>

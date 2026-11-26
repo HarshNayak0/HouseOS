@@ -4,9 +4,8 @@
  */
 
 import { inQuietHours, milestoneLabel, nextMilestone } from "../_shared/rules.ts";
-export { inQuietHours, milestoneLabel, nextMilestone };
-
-export const TZ = "America/Toronto";
+import { TZ, zonedAt, zonedDayTime } from "../_shared/tz.ts";
+export { inQuietHours, milestoneLabel, nextMilestone, TZ };
 
 export interface Member {
   id: string;
@@ -90,31 +89,11 @@ export interface Plan {
   messages: Message[];
 }
 
-const parts = (d: Date) => {
-  const p = new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    hourCycle: "h23",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).formatToParts(d);
-  const g = (t: string) => p.find((x) => x.type === t)!.value;
-  return { day: `${g("year")}-${g("month")}-${g("day")}`, hhmm: `${g("hour")}:${g("minute")}` };
-};
+/** Day and time of an instant in the home time zone. */
+const parts = (d: Date) => zonedDayTime(d);
 
-/** UTC instant of a Toronto wall-clock time on a given Toronto day. */
-export function torontoAt(day: string, hh: number, mm: number): Date {
-  const [y, mo, d] = day.split("-").map(Number);
-  const guess = Date.UTC(y, mo - 1, d, hh, mm);
-  for (const off of [-4, -5]) {
-    const c = new Date(guess - off * 3_600_000);
-    const p = parts(c);
-    if (p.day === day && p.hhmm === `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`) return c;
-  }
-  return new Date(guess + 5 * 3_600_000);
-}
+/** UTC instant of a home-time-zone wall-clock time on a given home day (named for history). */
+export const torontoAt = (day: string, hh: number, mm: number): Date => zonedAt(day, hh, mm);
 
 const timeLabel = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: TZ, hour: "numeric", minute: "2-digit" }).format(d);
 
@@ -259,7 +238,7 @@ export function planReminders(input: Input): Plan[] {
       })),
     });
   }
-  // milestones: 14 / 7 / 1 days before, from 9 am Toronto. Birthdays go only to the other person.
+  // milestones: 14 / 7 / 1 days before, from 9 am home time. Birthdays go only to the other person.
   if (hhmm >= "09:00") {
     for (const ms of milestones) {
       if (ms.deleted_at) continue;
@@ -292,7 +271,7 @@ export function planReminders(input: Input): Plan[] {
 const VISIT_MS = 2 * 3_600_000; // a visit ends by itself after 2 hours
 const list = (names: string[], max = 4) => (names.length > max ? `${names.slice(0, max).join(", ")} and ${names.length - max} more` : names.join(", "));
 
-/** "Harsh is at No Frills" to the other person, and items they add while he's there back to him. */
+/** "<shopper> is at <store>" to the other person, and items they add while there back to the shopper. */
 function planStore({ now, members, prefs, visits = [], shopping = [] }: Input, hhmm: string): Plan[] {
   const plans: Plan[] = [];
   const byId = (id: string) => members.find((m) => m.id === id);
@@ -339,7 +318,7 @@ function planStore({ now, members, prefs, visits = [], shopping = [] }: Input, h
   return plans;
 }
 
-/** The morning digest: one push per person from 8 am (Toronto), only if there's something to say. */
+/** The morning digest: one push per person from 8 am (home time), only if there's something to say. */
 export function digestFor(memberId: string, input: Input, today: string): { title: string; body: string } | null {
   const { members, chores, tasks, milestones = [], digest } = input;
   if (!digest) return null;

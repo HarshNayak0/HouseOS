@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { live, useRows } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
-import { formatDay, torontoDayKey } from "@/lib/time";
+import { formatDay, HOME_TZ, torontoDayKey } from "@/lib/time";
 import { daysBetween } from "@/lib/trips";
 import {
   addPasskey,
@@ -172,7 +172,7 @@ function NewPin({ onDone }: { onDone: () => void }) {
       {problem && <p className="m-0 text-xs text-urgent">{problem}</p>}
       <PinField label="Type it again" value={b} onChange={setB} />
       {mismatch && <p className="m-0 text-xs text-urgent">The two PINs don&apos;t match</p>}
-      <p className="m-0 text-xs text-ink-2">This PIN is yours alone; Prerna and Harsh each set their own.</p>
+      <p className="m-0 text-xs text-ink-2">This PIN is yours alone: each of you sets your own.</p>
       <button type="submit" className={addBtn} disabled={busy || a.length !== 6 || !!problem || a !== b}>
         {busy ? "Saving…" : "Save PIN and open"}
       </button>
@@ -384,7 +384,7 @@ function ItemCard({ item, onEdit, onChanged }: { item: VaultItem; onEdit: () => 
           ))}
           {item.has_attachment && <Attachment item={item} onChanged={onChanged} />}
           <p className="m-0 mt-1 text-[10.5px] text-ink-2">
-            Updated by {byUser(item.updated_by)?.display_name ?? "?"} · {new Date(item.updated_at).toLocaleDateString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" })}
+            Updated by {byUser(item.updated_by)?.display_name ?? "?"} · {new Date(item.updated_at).toLocaleDateString("en-CA", { timeZone: HOME_TZ, month: "short", day: "numeric" })}
           </p>
           <div className="flex flex-wrap gap-3">
             <button type="button" className={linkBtn} onClick={onEdit}>
@@ -625,8 +625,8 @@ function Security() {
           <span className="flex-1">
             🔑 {p.name}
             <span className="block text-[11px] text-ink-2">
-              added {new Date(p.created_at).toLocaleDateString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" })}
-              {p.last_used_at && ` · last used ${new Date(p.last_used_at).toLocaleDateString("en-CA", { timeZone: "America/Toronto", month: "short", day: "numeric" })}`}
+              added {new Date(p.created_at).toLocaleDateString("en-CA", { timeZone: HOME_TZ, month: "short", day: "numeric" })}
+              {p.last_used_at && ` · last used ${new Date(p.last_used_at).toLocaleDateString("en-CA", { timeZone: HOME_TZ, month: "short", day: "numeric" })}`}
             </span>
           </span>
           <button
