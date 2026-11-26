@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-26 | On touch screens every text field is ≥16 px (one unlayered CSS rule); `touch-action: manipulation` on the page | iPhone Safari zooms into fields under 16 px and stays zoomed, cropping the top and right; double-tap zoom on quick taps did the same. Pinch-to-zoom is kept (accessibility), no `maximum-scale` |
 | 2026-11-26 | Quick add: one floating + over the house that fans out into Grocery / Task / Note; hidden while a panel is open | Capture in one tap from anywhere; rooms already have their own add box |
 | 2026-11-26 | "I'm at the store": `store_visits` + DB triggers ping `notify`; partner gets "X is at Y", shopper gets items added during the visit; ends by hand or after 2 h | Push needs the server (the partner's subscriptions aren't readable by the app); claims prevent repeats |
 | 2026-11-26 | Staples from `item_frequency` (count, first and last added): usual gap = span / (count − 1); due at 0.9× the gap; needs ≥3 purchases, gap ≥2 days, and stops after 4× | No new tables or history; good enough rhythm detection for groceries |
