@@ -186,6 +186,7 @@ const KINDS: [string, string][] = [
   ["milestones", "Birthdays and anniversaries coming up"],
   ["store", "When your partner is at the store, and what they add while you are"],
   ["digest", "Morning summary at 8 am: your day, plus what's coming up"],
+  ["nudges", "High-priority tasks: a second reminder at 6 pm until they're done"],
 ];
 
 function Notifications({ me }: { me: Member }) {

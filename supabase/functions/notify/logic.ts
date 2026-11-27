@@ -43,6 +43,9 @@ export interface Task {
   completed_at: string | null;
   deleted_at: string | null;
   reminded_due_at: string | null;
+  /** 0 none, 1 low, 2 medium, 3 high */
+  priority?: number;
+  created_at?: string;
 }
 export interface Note {
   id: string;
@@ -67,7 +70,7 @@ export interface Milestone {
   deleted_at: string | null;
 }
 
-export type Kind = "chores" | "tasks" | "notes" | "milestones" | "store" | "digest";
+export type Kind = "chores" | "tasks" | "notes" | "milestones" | "store" | "digest" | "nudges";
 export interface Message {
   memberId: string;
   kind: Kind;
@@ -83,7 +86,8 @@ export type Claim =
   | { table: "milestones"; id: string; key: string; reminded: string[] }
   | { table: "store_visits"; id: string }
   | { table: "store_items"; id: string; prev: string | null; until: string }
-  | { table: "digest_log"; memberId: string; day: string };
+  | { table: "digest_log"; memberId: string; day: string }
+  | { table: "task_nudge_log"; memberId: string; day: string; slot: "am" | "pm" };
 export interface Plan {
   claim: Claim;
   messages: Message[];
@@ -158,7 +162,16 @@ export interface Input {
   visits?: StoreVisit[];
   shopping?: ShoppingItem[];
   /** for the morning digest */
-  digest?: { sources: CalendarSource[]; events: CalendarEvent[]; dates: PlannedDate[]; trips: Trip[]; renewals: Renewal[]; sentToday: string[] };
+  digest?: {
+    sources: CalendarSource[];
+    events: CalendarEvent[];
+    dates: PlannedDate[];
+    trips: Trip[];
+    renewals: Renewal[];
+    sentToday: string[];
+    /** high-priority nudges already sent today, as "<memberId>:am" / "<memberId>:pm" */
+    nudgesSent?: string[];
+  };
 }
 
 /**
@@ -264,7 +277,7 @@ export function planReminders(input: Input): Plan[] {
       });
     }
   }
-  plans.push(...planStore(input, hhmm), ...planDigests(input, hhmm, today));
+  plans.push(...planStore(input, hhmm), ...planDigests(input, hhmm, today), ...planNudges(input, hhmm, today));
   return plans;
 }
 
@@ -318,6 +331,30 @@ function planStore({ now, members, prefs, visits = [], shopping = [] }: Input, h
   return plans;
 }
 
+/** High-priority tasks are nudged twice a day for their first week, then fall back to the daily digest. */
+export const NUDGE_DAYS = 7;
+/** The evening nudge: from 6 pm, dropped after 9 pm (the morning one is part of the digest). */
+export const NUDGE_PM = ["18:00", "21:00"] as const;
+
+const dayDiff = (a: string, b: string) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86_400_000);
+
+/**
+ * Is this open task one that keeps reminding `memberId` until it's done?
+ * - only its owner: whoever it's assigned to, else whoever created it (personal tasks: the creator)
+ * - from its due day (or, without a due date, from the day it was created)
+ * "high" = nudged twice a day; "high-faded" = past the first week, digest only; "medium" = digest daily.
+ */
+export function nagState(t: Task, memberId: string, members: Member[], today: string): "high" | "high-faded" | "medium" | null {
+  if (t.completed_at || t.deleted_at || (t.priority ?? 0) < 2) return null;
+  const creator = members.find((m) => m.user_id === t.created_by)?.id ?? null;
+  const owner = t.visibility === "personal" ? creator : (t.assignee_id ?? creator);
+  if (owner !== memberId) return null;
+  const start = zonedDayTime(new Date(t.due_at ?? t.created_at ?? Date.now())).day;
+  if (start > today) return null;
+  if (t.priority === 2) return "medium";
+  return dayDiff(start, today) < NUDGE_DAYS ? "high" : "high-faded";
+}
+
 /** The morning digest: one push per person from 8 am (home time), only if there's something to say. */
 export function digestFor(memberId: string, input: Input, today: string): { title: string; body: string } | null {
   const { members, chores, tasks, milestones = [], digest } = input;
@@ -347,10 +384,15 @@ export function digestFor(memberId: string, input: Input, today: string): { titl
   for (const c of chores)
     if (c.household_id === me.household_id && !c.paused && !c.deleted_at && Date.parse(c.next_due_at) < dayEnd && (!c.assignee_id || c.assignee_id === memberId))
       todayItems.push(c.title);
-  for (const t of tasks) {
-    if (t.household_id !== me.household_id || !t.due_at || t.completed_at || t.deleted_at || Date.parse(t.due_at) >= dayEnd) continue;
+  // tasks: due today or overdue (mine or anyone's), plus my high and medium ones until they're done
+  const listed = new Set<string>();
+  for (const t of [...tasks].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))) {
+    if (t.household_id !== me.household_id || t.completed_at || t.deleted_at || listed.has(t.id)) continue;
     const forMe = t.visibility === "personal" ? t.created_by === me.user_id : !t.assignee_id || t.assignee_id === memberId;
-    if (forMe) todayItems.push(t.title);
+    const dueToday = !!t.due_at && Date.parse(t.due_at) < dayEnd && forMe;
+    if (!dueToday && !nagState(t, memberId, members, today)) continue;
+    listed.add(t.id);
+    todayItems.push(t.priority === 3 ? `❗ ${t.title}` : t.title);
   }
   // coming up
   const soon: string[] = [];
@@ -374,6 +416,41 @@ export function digestFor(memberId: string, input: Input, today: string): { titl
   const title = n ? `Good morning, ${me.display_name} ☀️ ${n} thing${n > 1 ? "s" : ""} today` : `Good morning, ${me.display_name} ☀️`;
   const body = [todayItems.length ? list(todayItems, 5) : "", soon.join(" · ")].filter(Boolean).join("\n");
   return { title, body: body.length > 230 ? body.slice(0, 227) + "…" : body };
+}
+
+/**
+ * The second high-priority nudge of the day (6 pm), one notification per person listing all their high
+ * tasks. Anyone who has switched the digest off gets the morning one separately too.
+ */
+function planNudges(input: Input, hhmm: string, today: string): Plan[] {
+  if (!input.digest) return [];
+  const slot = hhmm >= NUDGE_PM[0] && hhmm < NUDGE_PM[1] ? "pm" : hhmm >= "08:00" && hhmm < "11:00" ? "am" : null;
+  if (!slot) return [];
+  const sent = new Set(input.digest.nudgesSent ?? []);
+  const plans: Plan[] = [];
+  for (const m of input.members) {
+    if (sent.has(`${m.id}:${slot}`)) continue;
+    const prefs = input.prefs.find((p) => p.member_id === m.id);
+    if (slot === "am" && prefs?.kinds?.digest !== false) continue; // it's in their digest
+    const high = input.tasks.filter((t) => t.household_id === m.household_id && nagState(t, m.id, input.members, today) === "high");
+    if (!high.length) continue;
+    const to = deliverable([m.id], "nudges", input.prefs, hhmm);
+    if (!to?.length) continue;
+    plans.push({
+      claim: { table: "task_nudge_log", memberId: m.id, day: today, slot },
+      messages: [
+        {
+          memberId: m.id,
+          kind: "nudges",
+          title: high.length === 1 ? "❗ Still to do" : `❗ ${high.length} high-priority tasks still to do`,
+          body: list(high.map((t) => t.title)),
+          url: "/office",
+          tag: "high-tasks", // each nudge replaces the last one on the lock screen
+        },
+      ],
+    });
+  }
+  return plans;
 }
 
 function planDigests(input: Input, hhmm: string, today: string): Plan[] {

@@ -197,6 +197,12 @@ function TaskRow({ task: t, subs, m }: { task: Task; subs: Subtask[]; m: ReturnT
           <span className="block text-xs text-ink-2">
             {t.due_at && <span className={state === "overdue" && !t.completed_at ? "font-bold text-urgent" : ""}>{dueLabel(t.due_at, t.due_has_time)}</span>}
             {subs.length > 0 && <span>{t.due_at ? " · " : ""}{doneSubs}/{subs.length} steps</span>}
+            {!t.completed_at && t.priority >= 2 && (
+              <span>
+                {t.due_at || subs.length ? " · " : ""}
+                {t.priority === 3 ? "🔔 reminds 8 am and 6 pm until done" : "🔔 in the morning summary until done"}
+              </span>
+            )}
           </span>
           <PartnerHint id={t.id} />
         </button>

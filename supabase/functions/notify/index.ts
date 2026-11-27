@@ -23,6 +23,7 @@ import {
   type Trip,
 } from "./logic.ts";
 
+const TASK_COLUMNS = "id, household_id, title, due_at, due_has_time, assignee_id, visibility, created_by, created_at, priority, completed_at, deleted_at, reminded_due_at";
 const torontoToday = () => zonedDayTime(new Date()).day;
 const plusDays = (day: string, n: number) => new Date(Date.parse(day + "T12:00:00Z") + n * 86_400_000).toISOString().slice(0, 10);
 
@@ -50,7 +51,7 @@ Deno.serve(async () => {
     db.from("notification_prefs").select("member_id, enabled, quiet_start, quiet_end, kinds"),
     // up to the end of today: reminders only fire once due; the digest lists the rest of today
     db.from("chores").select("id, household_id, title, next_due_at, assignee_id, remind, paused, deleted_at, reminded_due_at").is("deleted_at", null).lt("next_due_at", dayEnd).gte("next_due_at", since),
-    db.from("tasks").select("id, household_id, title, due_at, due_has_time, assignee_id, visibility, created_by, completed_at, deleted_at, reminded_due_at").is("deleted_at", null).is("completed_at", null).not("due_at", "is", null).gte("due_at", since),
+    db.from("tasks").select(TASK_COLUMNS).is("deleted_at", null).is("completed_at", null).not("due_at", "is", null).gte("due_at", since),
     db.from("notes").select("id, household_id, body, created_by, created_at, deleted_at, archived_at, notified_at").is("notified_at", null).gte("created_at", since),
     db.from("push_subscriptions").select("id, member_id, endpoint, p256dh, auth").is("deleted_at", null),
     db.from("milestones").select("id, household_id, title, kind, base_date, person_id, remind_days, reminded, deleted_at").is("deleted_at", null),
@@ -61,7 +62,7 @@ Deno.serve(async () => {
 
   // store visits and the morning digest (each optional: if its tables aren't there yet, it's skipped)
   const twoHoursAgo = new Date(now.getTime() - 2 * 3_600_000).toISOString();
-  const [visits, shopping, sources, events, dates, trips, renewals, sentToday] = await Promise.all([
+  const [visits, shopping, sources, events, dates, trips, renewals, sentToday, nagTasks, nudgesSent] = await Promise.all([
     db.from("store_visits").select("id, household_id, member_id, store, started_at, ended_at, notified_at, items_pushed_until").is("ended_at", null).gte("started_at", twoHoursAgo),
     db.from("shopping_items").select("household_id, name, store, created_by, created_at, checked_at, deleted_at").is("deleted_at", null).is("checked_at", null),
     db.from("calendar_sources").select("id, member_id, is_us_calendar, visible").is("deleted_at", null),
@@ -70,7 +71,12 @@ Deno.serve(async () => {
     db.from("trips").select("household_id, title, starts_on, ends_on").is("deleted_at", null).gte("starts_on", today).lte("starts_on", plusDays(today, 14)),
     db.from("vault_items").select("household_id, label, renewal_date").is("deleted_at", null).gte("renewal_date", today).lte("renewal_date", plusDays(today, 7)),
     db.from("digest_log").select("member_id").eq("day", today),
+    // high and medium tasks remind until they're done, whatever their due date
+    db.from("tasks").select(TASK_COLUMNS).is("deleted_at", null).is("completed_at", null).gte("priority", 2),
+    db.from("task_nudge_log").select("member_id, slot").eq("day", today),
   ]);
+  const allTasks = [...(tasks.data as Task[])];
+  for (const t of (nagTasks.error ? [] : nagTasks.data) as Task[]) if (!allTasks.some((x) => x.id === t.id)) allTasks.push(t);
   const digestReady = ![sources, events, dates, trips, renewals, sentToday].some((r) => r.error);
 
   const plans = planReminders({
@@ -78,7 +84,7 @@ Deno.serve(async () => {
     members: members.data as Member[],
     prefs: prefs.data as Prefs[],
     chores: chores.data as Chore[],
-    tasks: tasks.data as Task[],
+    tasks: allTasks,
     notes: notes.data as Note[],
     milestones: (milestones.error ? [] : milestones.data) as Milestone[],
     visits: (visits.error ? [] : visits.data) as StoreVisit[],
@@ -91,6 +97,7 @@ Deno.serve(async () => {
           trips: trips.data as Trip[],
           renewals: renewals.data as Renewal[],
           sentToday: (sentToday.data ?? []).map((r) => r.member_id as string),
+          nudgesSent: nudgesSent.error ? undefined : (nudgesSent.data ?? []).map((r) => `${r.member_id}:${r.slot}`),
         }
       : undefined,
   });
@@ -114,6 +121,8 @@ Deno.serve(async () => {
                 ).select("id")
               : c.table === "digest_log"
                 ? await db.from("digest_log").insert({ member_id: c.memberId, day: c.day }).select("member_id")
+                : c.table === "task_nudge_log"
+                ? await db.from("task_nudge_log").insert({ member_id: c.memberId, day: c.day, slot: c.slot }).select("member_id")
                 : await db.from(c.table).update({ reminded_due_at: c.due }).eq("id", c.id).or(`reminded_due_at.is.null,reminded_due_at.neq.${c.due}`).select("id");
     if (claimed.error || !claimed.data?.length) {
       skipped++;
@@ -138,6 +147,7 @@ Deno.serve(async () => {
   }
   // housekeeping: old digest records and finished store visits
   await db.from("digest_log").delete().lt("day", plusDays(today, -14));
+  await db.from("task_nudge_log").delete().lt("day", plusDays(today, -14));
   await db.from("store_visits").delete().lt("started_at", new Date(now.getTime() - 30 * 86_400_000).toISOString());
   return Response.json({ plans: plans.length, sent, skipped });
 });

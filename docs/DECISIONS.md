@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-27 | High-priority tasks: 8 am (in the digest) + 6 pm nudge until done; medium: daily digest line until done. From the due day (no date: from creation); owner only (assignee, else creator); high fades to digest-only after 7 days; own switch; one grouped, self-replacing notification; claimed in `task_nudge_log` | Harsh's choices after weighing notification fatigue: twice a day for high, once for medium |
 | 2026-11-26 | Reusable copies: one codebase, one deployment per couple on the couple's own free accounts; settings in `instances/<slug>.json`, secrets in GitHub environments, `couples.yml` deploys with the CLIs (no Git link to their Vercel) | Keeps each copy at $0 and their data in their hands; two users per Google project need no verification; one code path to maintain |
 | 2026-11-26 | Per-copy settings default to the original's values (Toronto, veeduos, its project ref) | The live copy needs no reconfiguration and behaves exactly as before |
 | 2026-11-26 | Time zone generalised: `zonedToUtc` (app) and `_shared/tz.ts` (functions) work for any IANA zone; the "toronto…" names stay as aliases | The functions' old offsets were Toronto-only (−4/−5) |

@@ -302,6 +302,13 @@ The whole process is a Claude skill: `.claude/skills/veedu-new-couple/`. Ask Cla
   - Avoids both calendars' timed events with half an hour either side, other planned dates and trip days. All-day events don't block.
   - Fits the date's length: a "weekend" needs Saturday and Sunday both clear.
   - If one calendar isn't connected, it says so. The logic is in `src/lib/freeTime.ts`.
+- **High and medium tasks remind until done:**
+  - **High:** listed first, with ❗, in the 8 am digest, plus one more notification at 6 pm (sent until 9 pm, then skipped). Starts on the due day, or straight away if there's no due date.
+  - **Fading:** after 7 days of nudges, a high task drops to the digest only.
+  - **Medium:** a line in the digest every day until done.
+  - **Who:** only the task's owner gets these: the assignee, otherwise its creator.
+  - **Tidy and switchable:** one notification lists all your high tasks, and each replaces the last. Settings → Notifications has its own switch for the 6 pm nudge. If you've turned the digest off, you get the 8 am nudge on its own.
+  - The rules are `nagState` and `planNudges` in `supabase/functions/notify/logic.ts`. `task_nudge_log` makes sure each nudge goes out once.
 - **Morning digest:**
   - At 8 am Toronto, `notify` sends each person one push about their own day: their calendar events and the Us calendar, chores and tasks due today or overdue, and tonight's date.
   - It adds what's coming up: birthdays today, trips in the next 14 days, renewals in the next 7.
