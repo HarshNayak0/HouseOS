@@ -64,7 +64,7 @@ export function NotesBoard() {
           title="The board is empty"
           hint="Leave a note for each other. When one of you posts, the brass lamp in the living room brightens on the other's screen for a day."
           example={
-            <div className="mt-1 w-40 rounded p-2.5 text-[13px] shadow-sm" style={{ background: NOTE_COLORS.lotus }}>
+            <div className="mt-1 w-40 rounded p-2.5 text-[13px] text-[#3b2418] shadow-sm" style={{ background: NOTE_COLORS.lotus }}>
               Have a good shift ☀️
             </div>
           }
@@ -74,7 +74,7 @@ export function NotesBoard() {
         {notes.map((n) => {
           const author = byUser(n.created_by);
           return (
-            <div key={n.id} className={`relative flex min-h-[84px] flex-col rounded p-2.5 text-[13px] text-[#3b2418] shadow-[0_2px_4px_rgba(59,36,24,0.12)] ${n.id === fresh ? "moment-pin" : ""}`} style={{ background: NOTE_COLORS[n.color] }}>
+            <div key={n.id} className={`note-card relative flex min-h-[84px] flex-col rounded p-2.5 text-[13px] text-[#3b2418] shadow-[0_2px_4px_rgba(59,36,24,0.12)] [&_button]:text-[#6b5444] ${n.id === fresh ? "moment-pin" : ""}`} style={{ background: NOTE_COLORS[n.color] }}>
               {n.pinned && (
                 <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-red-oxide shadow" role="img" aria-label="Pinned" />
               )}
@@ -104,7 +104,7 @@ export function NotesBoard() {
           placeholder="Leave a note…"
           rows={2}
           maxLength={500}
-          className="w-full rounded-lg border border-line-strong p-2 text-[15px]"
+          className="w-full rounded-lg border border-line-strong p-2 text-[15px] text-[#3b2418] caret-[#3b2418] placeholder:text-[#7a6250]"
           style={{ background: NOTE_COLORS[color] }}
           value={body}
           onChange={(e) => setBody(e.target.value)}

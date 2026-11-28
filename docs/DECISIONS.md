@@ -4,6 +4,7 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-29 | Notes (and the note you're writing) keep dark text and icons in every look | They're always paper-coloured; at night the typed text was cream on yellow |
 | 2026-11-29 | Camera outside: damped glide, soft (eased) compound edge, zoom to screen centre (not cursor), double-tap the yard to focus there; taps only count with one finger, quick, on the house | Harsh found free movement clunky; pinches were being read as taps and zoom-to-cursor swings the tilted view |
 | 2026-11-29 | Jasmine marker + close-up view and card; vine rebuilt in detail (shoots, leaf pairs, five-petal flowers, buds) | Harsh asked to see the jasmine up close |
 | 2026-11-29 | Grocery tick-off: the item's name flies in an arc into the basket (following it as the row closes), the row collapses, the basket bounces, and the item eases into the basket list | The fade-in-place version read as the item vanishing and reappearing |

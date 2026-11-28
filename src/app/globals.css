@@ -259,3 +259,8 @@ html[data-look="night"] .text-terracotta { color: #f0ae8c; }
 }
 @keyframes moment-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes moment-fade-out { from { opacity: 1; } to { opacity: 0; } }
+
+/* notes are always paper-coloured, whatever the look: keep their small text dark */
+.note-card .text-brass {
+  color: #7d5a1a !important;
+}
