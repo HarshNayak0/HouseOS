@@ -361,11 +361,11 @@ function TripOptions({
 }) {
   return (
     <>
-      <fieldset className="m-0 border-0 p-0">
-        <legend className="mb-1 text-[11px] font-bold tracking-wider text-ink-2 uppercase">
+      <fieldset className="m-0 border-0 p-0 pt-1">
+        <legend className="mb-2 text-[11px] font-bold tracking-wider text-ink-2 uppercase">
           The vibe
         </legend>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-2">
           {(Object.keys(VIBES) as Vibe[]).map((v) => (
             <button
               key={v}
@@ -382,11 +382,11 @@ function TripOptions({
           ))}
         </div>
       </fieldset>
-      <fieldset className="m-0 border-0 p-0">
-        <legend className="mb-1 text-[11px] font-bold tracking-wider text-ink-2 uppercase">
+      <fieldset className="m-0 border-0 p-0 pt-1">
+        <legend className="mb-2 text-[11px] font-bold tracking-wider text-ink-2 uppercase">
           Getting there
         </legend>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {(Object.keys(TRANSPORTS) as Transport[]).map((t) => (
             <button
               key={t}
@@ -400,11 +400,11 @@ function TripOptions({
           ))}
         </div>
       </fieldset>
-      <fieldset className="m-0 border-0 p-0">
-        <legend className="mb-1 text-[11px] font-bold tracking-wider text-ink-2 uppercase">
+      <fieldset className="m-0 border-0 p-0 pt-1">
+        <legend className="mb-2 text-[11px] font-bold tracking-wider text-ink-2 uppercase">
           Any of these? (optional)
         </legend>
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2">
           {(Object.keys(EXTRAS) as Extra[]).map((e) => {
             const on = extras.includes(e);
             return (
@@ -485,10 +485,10 @@ function NewTrip({
   return (
     <form
       onSubmit={submit}
-      className="mb-3 space-y-3 rounded-lg border border-brass bg-[#fffdf8] p-3"
+      className="mb-3 flex flex-col gap-5 rounded-lg border border-brass bg-[#fffdf8] p-4"
       aria-label="Plan a trip"
     >
-      <div className="grid grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         <input
           className={`${inputCls} col-span-2`}
           placeholder="Trip name, e.g. Muskoka cottage"
@@ -509,7 +509,7 @@ function NewTrip({
           From
           <input
             type="date"
-            className={`${smallSelect} w-full`}
+            className={`${smallSelect} mt-1 w-full`}
             value={from}
             min={torontoDayKey(new Date())}
             onChange={(e) => (
@@ -522,7 +522,7 @@ function NewTrip({
           To
           <input
             type="date"
-            className={`${smallSelect} w-full`}
+            className={`${smallSelect} mt-1 w-full`}
             value={to}
             min={from}
             onChange={(e) => setTo(e.target.value)}
@@ -542,7 +542,7 @@ function NewTrip({
         extras={extras}
         setExtras={setExtras}
       />
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3 border-t border-[#efe4cf] pt-4">
         <button type="submit" className={addBtn} disabled={!valid}>
           Plan it
         </button>
@@ -597,8 +597,8 @@ function EditTrip({ trip, onDone }: { trip: Trip; onDone: () => void }) {
     setFrom(v);
   };
   return (
-    <form onSubmit={submit} className="mb-1 space-y-3">
-      <div className="grid grid-cols-2 gap-1.5">
+    <form onSubmit={submit} className="mb-2 flex flex-col gap-5">
+      <div className="grid grid-cols-2 gap-x-2 gap-y-3">
         <input
           className={`${inputCls} col-span-2`}
           aria-label="Trip name"
@@ -618,7 +618,7 @@ function EditTrip({ trip, onDone }: { trip: Trip; onDone: () => void }) {
           From
           <input
             type="date"
-            className={`${smallSelect} w-full`}
+            className={`${smallSelect} mt-1 w-full`}
             value={from}
             onChange={(e) => moveStart(e.target.value)}
           />
@@ -627,7 +627,7 @@ function EditTrip({ trip, onDone }: { trip: Trip; onDone: () => void }) {
           To
           <input
             type="date"
-            className={`${smallSelect} w-full`}
+            className={`${smallSelect} mt-1 w-full`}
             value={to}
             min={from}
             onChange={(e) => setTo(e.target.value)}
@@ -654,7 +654,7 @@ function EditTrip({ trip, onDone }: { trip: Trip; onDone: () => void }) {
         extras={extras}
         setExtras={setExtras}
       />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap items-center gap-3 border-t border-[#efe4cf] pt-4">
         <button type="submit" className={addBtn} disabled={!valid}>
           Save
         </button>
@@ -705,32 +705,28 @@ function DoAgain({
     const shift = daysBetween(trip.starts_on, from);
     const plan = live(dayRows).filter((d) => d.trip_id === trip.id);
     if (plan.length)
-      await sb
-        .from("trip_days")
-        .insert(
-          plan.map((d) => ({
-            household_id: trip.household_id,
-            trip_id: id,
-            day_date: addDays(d.day_date, shift),
-            at_time: d.at_time,
-            title: d.title,
-            notes: d.notes,
-          })),
-        );
+      await sb.from("trip_days").insert(
+        plan.map((d) => ({
+          household_id: trip.household_id,
+          trip_id: id,
+          day_date: addDays(d.day_date, shift),
+          at_time: d.at_time,
+          title: d.title,
+          notes: d.notes,
+        })),
+      );
     const own = live(packRows).filter((p) => p.trip_id === trip.id && !p.rule_key && p.qty > 0);
     if (own.length)
-      await sb
-        .from("packing_items")
-        .insert(
-          own.map((p) => ({
-            household_id: trip.household_id,
-            trip_id: id,
-            owner_id: p.owner_id,
-            title: p.title,
-            qty: p.qty,
-            category: p.category,
-          })),
-        );
+      await sb.from("packing_items").insert(
+        own.map((p) => ({
+          household_id: trip.household_id,
+          trip_id: id,
+          owner_id: p.owner_id,
+          title: p.title,
+          qty: p.qty,
+          category: p.category,
+        })),
+      );
     await Promise.all(
       (["trips", "trip_days", "packing_items"] as const).map((t) =>
         qc.invalidateQueries({ queryKey: rowsKey(t) }),
