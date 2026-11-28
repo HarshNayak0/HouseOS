@@ -41,7 +41,9 @@ export type ListTable =
   | "packing_items"
   | "packing_templates"
   | "vault_items"
-  | "store_visits";
+  | "store_visits"
+  | "packing_profiles"
+  | "trip_ideas";
 export const rowsKey = (t: ListTable) => ["rows", t] as const;
 
 export interface BaseRow {
@@ -68,6 +70,7 @@ const ORDER: Partial<Record<ListTable, { column: string; ascending: boolean; lim
   trips: { column: "starts_on", ascending: true },
   trip_days: { column: "day_date", ascending: true },
   store_visits: { column: "started_at", ascending: false, limit: 10 },
+  packing_profiles: { column: "updated_at", ascending: true },
 };
 
 /** Tables whose secret columns the app may not read. */
@@ -199,6 +202,8 @@ const LIVE_TABLES: ListTable[] = [
   "packing_templates",
   "vault_items",
   "store_visits",
+  "packing_profiles",
+  "trip_ideas",
 ];
 
 /**

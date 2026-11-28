@@ -243,16 +243,19 @@ Google Cloud needs the Calendar API turned on, the `.../auth/calendar` scope, an
   - **Schedule** adds the date to the Us calendar, or to your own if Us isn't set up. The event is removed if you unplan it. Dates not on Google still show in the app calendar.
   - **We did it** saves a memory with a photo and a note. Each of you rates it 1–5, and only you can change your own rating.
   - The petti lamp glows when a date is planned this week (Mon–Sun, Toronto time).
-- **Backyard: trips.** Each trip has its own page:
-  - a name, destination and dates you can edit later (moving the start date can move the day-by-day plan with it)
-  - a cover photo
-  - a day-by-day plan
-  - bookings with confirmation numbers (tap to copy), cost and an attached ticket (PDF up to 5 MB, or a photo)
-  - a packing list, shared and per person, with a % packed, reusable templates and a starter list
+- **Backyard: trips.** Planning a trip is one screen: name, place, dates, the **vibe** (City, Beach, Cottage, Event: weddings, parties, conferences), how you're getting there (drive / fly / train) and optional extras (swimming, hiking, a dressy night, photo shoot, laundry there). Each trip is one page:
+  - **Next:** the one or two things still to do (book a place to stay, add flights, pack when you leave in 3 days…)
+  - **Weather:** the forecast for the destination from Open-Meteo (free, no key) once the trip is 16 days away; before that, packing goes by the season
+  - **Packing, made for you:** a list each and a shared list, worked out from the length, vibe, transport, extras and weather (e.g. 4 days at a cottage: nightwear 2, 1 dressy + 3 cozy outfits, underwear 5). Each item says why (ⓘ). − / + change quantities; items with a quantity are packed one at a time (2/5). Each person picks their outfit wording once (Confident & Cozy, Cute & Comfy, Dressy & Casual). Changing the trip updates the suggestions but never what you changed by hand
+  - **It learns, per person and per vibe:** after a change, "Remember for cottage trips?"; after the trip, a 30-second check-in (what you didn't use, what you wished you'd brought). Stored in `packing_profiles`
+  - **Plan in plain words:** "Sat 7pm dinner at The Kitchen" goes to the right day and time (you can change the day before adding)
+  - bookings with confirmation numbers (tap to copy), cost and an attached ticket (PDF up to 5 MB, or a photo). On Android, **Share → Veedu** from your email or a booking app attaches the ticket to a trip
   - a budget: planned against bookings plus money spent there, and who paid
+  - **Do this trip again:** copies the place, vibe, plan (moved to the new dates) and your own packing items
+- **Someday:** trip ideas without dates; **Plan it** turns one into a trip.
 - **Trips elsewhere in the app:** they appear on the calendar as all-day spans and in the living-room strip when 30 days away or less. The boat lantern lights up from 30 days before a trip until it ends.
 - **Files:** photos and attachments live in the private `household-files` bucket, one folder per household. Links are signed and expire after an hour.
-- **Tests:** the pure helpers are in `src/lib/trips.ts` (unit-tested). Access rules are checked in `tests/db/dates_trips.test.sql`.
+- **Tests:** the pure helpers are in `src/lib/trips.ts`, `src/lib/packing.ts` (the packing rules), `src/lib/planText.ts` and `src/lib/weather.ts` (unit-tested). Access rules are checked in `tests/db/dates_trips.test.sql` and `tests/db/trips_v2.test.sql`.
 
 ## Coat closet vault
 

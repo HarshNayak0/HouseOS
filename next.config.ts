@@ -10,7 +10,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://*.supabase.co",
   "font-src 'self'",
-  `connect-src 'self' https://*.supabase.co wss://*.supabase.co${isDev ? " ws:" : ""}`,
+  // Open-Meteo: free weather for trips (no key)
+  `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.open-meteo.com https://geocoding-api.open-meteo.com${isDev ? " ws:" : ""}`,
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "frame-ancestors 'none'",

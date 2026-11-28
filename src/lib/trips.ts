@@ -3,11 +3,8 @@
 import { addDays, daysBetween } from "./time";
 export { addDays, daysBetween };
 
-/** Share of a trip's packing items that are packed, or null when the list is empty. */
-export function packedPct(items: { trip_id: string; packed: boolean; deleted_at: string | null }[], tripId: string): number | null {
-  const mine = items.filter((p) => p.trip_id === tripId && !p.deleted_at);
-  return mine.length ? (100 * mine.filter((p) => p.packed).length) / mine.length : null;
-}
+/** Share of a trip's packing that's done (counting quantities), or null when the list is empty. */
+export { packedShare as packedPct } from "./packing";
 
 /** Parse a typed amount ("$1,250.5") to a number with cents, or null. */
 export function parseAmount(s: string): number | null {

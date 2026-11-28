@@ -12,8 +12,14 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: "#F6F1E7",
     theme_color: "#F6F1E7",
     orientation: "any",
-    // Android: "Share → Veedu" from Instagram or a browser opens the recipe importer
-    share_target: { action: "/share", method: "GET", params: { title: "title", text: "text", url: "url" } },
+    // Android: "Share → Veedu". Text or a link opens the recipe importer; a ticket PDF or screenshot
+    // goes to the backyard to be attached to a trip (src/app/share/receive/route.ts).
+    share_target: {
+      action: "/share/receive",
+      method: "POST",
+      enctype: "multipart/form-data",
+      params: { title: "title", text: "text", url: "url", files: [{ name: "files", accept: ["application/pdf", ".pdf", "image/*"] }] },
+    },
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
