@@ -58,7 +58,7 @@ function Renewals() {
       {soon.map((i) => {
         const d = daysBetween(today, i.renewal_date!);
         return (
-          <div key={i.id} className={`mb-1.5 flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm ${d <= 30 ? "border-[#e9d4a4] bg-[#fff8e6]" : "border-[#e6d9c2] bg-white"}`}>
+          <div key={i.id} className={`mb-1.5 flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm ${d <= 30 ? "border-callout-line bg-callout" : "border-line bg-card"}`}>
             <span aria-hidden="true">{d <= 30 ? "🔔" : SECTIONS[i.section].icon}</span>
             <span className="flex-1 font-bold">{i.label}</span>
             <span className="text-xs text-ink-2">{d === 0 ? "today" : d === 1 ? "tomorrow" : `in ${d} days`}</span>
@@ -215,7 +215,7 @@ function Unlock({ status, onForgot }: { status: VaultStatus; onForgot: () => voi
   };
   return (
     <Sec title="Home vault">
-      <div className="rounded-lg border border-[#e6d9c2] bg-white p-4 text-center">
+      <div className="rounded-lg border border-line bg-card p-4 text-center">
         <p className="m-0 text-3xl" aria-hidden="true">
           🔒
         </p>
@@ -288,7 +288,7 @@ function VaultOpen() {
   const trash = (items ?? []).filter((i) => i.deleted_at);
   return (
     <>
-      <div className="sticky top-0 z-10 mb-2 flex items-center gap-2 rounded-lg border border-[#cfe0c4] bg-[#f1f7ec] px-3 py-2 text-sm">
+      <div className="sticky top-0 z-10 mb-2 flex items-center gap-2 rounded-lg border border-ok-line bg-ok px-3 py-2 text-sm">
         <span aria-hidden="true">🔓</span>
         <span className="flex-1">
           <b>Open</b> · locks in <span className="tabular-nums">{left}</span>
@@ -361,14 +361,14 @@ function ItemCard({ item, onEdit, onChanged }: { item: VaultItem; onEdit: () => 
   const today = torontoDayKey(new Date());
   const shown = def.fields.filter((f) => item.fields[f.key]);
   return (
-    <div className="mb-2 rounded-lg border border-[#e6d9c2] bg-white">
+    <div className="mb-2 rounded-lg border border-line bg-card">
       <button type="button" className="flex min-h-11 w-full items-center gap-2 px-2.5 py-2 text-left" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
         <span className="min-w-0 flex-1">
           <b className="text-sm">{item.label}</b>
           {summaryOf(item) && <span className="block truncate text-xs text-ink-2">{summaryOf(item)}</span>}
         </span>
         {item.renewal_date && (
-          <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${item.renewal_date >= today && daysBetween(today, item.renewal_date) <= 30 ? "bg-[#fff0c9] text-[#7d5a1a]" : "bg-[#f3ead9] text-teak"}`}>
+          <span className={`rounded-full px-2 py-0.5 text-[10.5px] font-bold ${item.renewal_date >= today && daysBetween(today, item.renewal_date) <= 30 ? "bg-callout text-callout-ink" : "bg-sunken text-teak"}`}>
             {item.renewal_date < today ? "renewal passed" : `renews ${formatDay(item.renewal_date)}`}
           </span>
         )}
@@ -377,7 +377,7 @@ function ItemCard({ item, onEdit, onChanged }: { item: VaultItem; onEdit: () => 
         </span>
       </button>
       {open && (
-        <div className="border-t border-dashed border-[#e6d9c2] px-2.5 pt-1 pb-2">
+        <div className="border-t border-dashed border-line px-2.5 pt-1 pb-2">
           {item.broken && <p className="text-sm text-urgent">This item can&apos;t be decrypted. Was the vault key changed?</p>}
           {shown.map((f) => (
             <FieldRow key={f.key} def={f} value={item.fields[f.key]} />
@@ -450,7 +450,7 @@ function FieldRow({ def, value }: { def: FieldDef; value: string }) {
     );
   if (!masked && def.type === "date") body = formatDay(value, { month: "long", day: "numeric", year: "numeric" });
   return (
-    <div className="flex items-start gap-2 border-b border-dashed border-[#efe4cf] py-1.5 last:border-0">
+    <div className="flex items-start gap-2 border-b border-dashed border-line py-1.5 last:border-0">
       <div className="min-w-0 flex-1">
         <p className="m-0 text-[10.5px] font-bold tracking-wider text-ink-2 uppercase">{def.label}</p>
         {/* masked values are never put in the page, only dots */}
@@ -532,7 +532,7 @@ function ItemForm({ section, item, onClose, onSaved }: { section: VaultSection; 
     setBusy(false);
   };
   return (
-    <div ref={ref} role="dialog" aria-label={`${item ? "Edit" : "Add"} ${def.title}`} className="mb-3 rounded-lg border border-brass bg-[#fffdf8] p-3">
+    <div ref={ref} role="dialog" aria-label={`${item ? "Edit" : "Add"} ${def.title}`} className="mb-3 rounded-lg border border-brass bg-card-warm p-3">
       <p className="m-0 mb-2 font-bold">
         {def.icon} {item ? `Edit “${item.label}”` : `New in ${def.title}`}
       </p>
@@ -555,7 +555,7 @@ function ItemForm({ section, item, onClose, onSaved }: { section: VaultSection; 
               <textarea
                 rows={3}
                 maxLength={2000}
-                className="block w-full rounded-lg border border-[#dccdb2] bg-white p-2 text-[15px] font-normal tracking-normal normal-case"
+                className="block w-full rounded-lg border border-line-strong bg-card p-2 text-[15px] font-normal tracking-normal normal-case"
                 value={fields[f.key] ?? ""}
                 onChange={(e) => setFields({ ...fields, [f.key]: e.target.value })}
               />

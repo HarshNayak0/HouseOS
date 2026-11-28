@@ -1,10 +1,11 @@
 "use client";
 
+import { celebrate } from "@/lib/feel";
 import { useMemo, useState } from "react";
 import { dueLabel, dueState } from "@/lib/lists/dates";
 import { live, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { torontoDayKey, torontoToUtc } from "@/lib/time";
-import { Check, EmptyState, IconButton, PartnerHint, Row, Sec, Trash, TrashIcon, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
+import { Check, EmptyState, InkCheck, IconButton, PartnerHint, Row, Sec, Trash, TrashIcon, WhoChip, addBtn, inputCls, linkBtn, smallSelect, usePeople } from "./ui";
 
 export interface Task extends BaseRow {
   title: string;
@@ -80,7 +81,7 @@ export function Tasks() {
             type="button"
             aria-pressed={filter === f}
             onClick={() => setFilter(f)}
-            className={`min-h-9 rounded-full border px-3 text-xs font-bold ${filter === f ? "border-teak bg-teak text-white" : "border-[#e6d9c2] bg-white text-ink"}`}
+            className={`min-h-9 rounded-full border px-3 text-xs font-bold ${filter === f ? "border-teak bg-teak text-white" : "border-line bg-card text-ink"}`}
           >
             {label}
           </button>
@@ -94,7 +95,7 @@ export function Tasks() {
             hint="Add errands and to-dos, give them a date, and say who's doing them. Mark one Personal to keep it to yourself."
             example={
               <Row>
-                <span className="h-[18px] w-[18px] flex-none rounded border border-[#c9b796]" />
+                <span className="h-[18px] w-[18px] flex-none rounded border border-line-firm" />
                 <span className="grow">
                   Renew tenant insurance <span className="block text-xs text-urgent">Friday</span>
                 </span>
@@ -182,12 +183,23 @@ function AddTask({ onAdd }: { onAdd: (t: Partial<Task>) => void }) {
 
 function TaskRow({ task: t, subs, m }: { task: Task; subs: Subtask[]; m: ReturnType<typeof useRowMutation<Task>> }) {
   const [open, setOpen] = useState(false);
+  const [settle, setSettle] = useState(0);
   const state = dueState(t.due_at);
   const doneSubs = subs.filter((s) => s.done).length;
   return (
-    <div className="border-b border-dashed border-[#e6d9c2] last:border-b-0">
-      <div className={`flex min-h-11 items-center gap-2.5 py-1.5 text-sm ${t.completed_at ? "[&_.title]:text-[#7a6b5d] [&_.title]:line-through" : ""}`}>
-        <Check checked={!!t.completed_at} onChange={(v) => m.update(t.id, { completed_at: v ? new Date().toISOString() : null })} label={`Done: ${t.title}`} />
+    <div className="border-b border-dashed border-line last:border-b-0">
+      <div key={settle} className={`${settle ? "moment-settle " : ""}flex min-h-11 items-center gap-2.5 py-1.5 text-sm ${t.completed_at ? "[&_.title]:text-ink-3 [&_.title]:line-through" : ""}`}>
+        <InkCheck
+          checked={!!t.completed_at}
+          onChange={(v) => {
+            m.update(t.id, { completed_at: v ? new Date().toISOString() : null });
+            if (v) {
+              celebrate("task");
+              setSettle((n) => n + 1);
+            }
+          }}
+          label={`Done: ${t.title}`}
+        />
         <button type="button" className="min-h-9 min-w-0 grow text-left" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
           <span className="title">
             {t.priority === 3 && <span className="mr-1 font-bold text-urgent" aria-label="High priority">!</span>}
@@ -219,13 +231,13 @@ function TaskDetails({ t, subs, m }: { t: Task; subs: Subtask[]; m: ReturnType<t
   const [sub, setSub] = useState("");
   const dueDate = t.due_at ? torontoDayKey(t.due_at) : "";
   return (
-    <div className="mb-2 ml-9 rounded-lg bg-[#fffdf8] p-2">
+    <div className="mb-2 ml-9 rounded-lg bg-card-warm p-2">
       <textarea
         aria-label="Notes"
         placeholder="Notes"
         rows={2}
         maxLength={2000}
-        className="w-full rounded-lg border border-[#dccdb2] bg-white p-2 text-sm"
+        className="w-full rounded-lg border border-line-strong bg-card p-2 text-sm"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={() => notes !== (t.notes ?? "") && m.update(t.id, { notes: notes || null })}

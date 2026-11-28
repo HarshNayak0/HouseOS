@@ -16,6 +16,7 @@ import { colorMaterialCache, createMaterials } from "./materials";
 import { mergeStatic } from "./merge";
 import { buildDetails } from "./props/details";
 import { buildFurniture, type FurnitureRefs } from "./props/furniture";
+import { buildHomey, type Homey } from "./props/homey";
 import { Rng } from "./rng";
 import { buildFloors } from "./rooms/floors";
 import { createTextures, TEXTURE_COUNT, type TextureSet } from "./textures";
@@ -30,6 +31,7 @@ export interface HouseModel extends RoofRefs, FurnitureRefs, BackyardRefs {
   roomMats: Record<RoomId, THREE.MeshStandardMaterial[]>;
   backyardOverlay?: THREE.MeshBasicMaterial;
   indicators: Indicators;
+  homey: Homey;
   stats: { meshesBefore: number; meshesAfter: number };
 }
 
@@ -96,6 +98,7 @@ export async function buildHouse(opts: BuildOptions): Promise<HouseModel> {
   await step("Planting coconut palms…");
   buildDetails(ctx); // extra detail beyond the prototype (after it, so its RNG sequence is unchanged)
   const indicators = buildIndicators(ctx, opts.fontFamily);
+  const homey = buildHomey(ctx, roofRefs.roofMats); // own RNG, after everything else
   await step("Lighting the lamps…");
 
   const a = mergeStatic(walls);
@@ -113,6 +116,7 @@ export async function buildHouse(opts: BuildOptions): Promise<HouseModel> {
     roomMats: ctx.roomMats,
     backyardOverlay: ctx.backyardOverlay,
     indicators,
+    homey,
     ...roofRefs,
     ...furniture,
     ...backyard,

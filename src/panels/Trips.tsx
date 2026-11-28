@@ -134,7 +134,7 @@ const money = (n: number, cur: string) =>
   }).format(n);
 const num = parseAmount;
 const chip = (on: boolean) =>
-  `min-h-10 rounded-full border px-3 text-sm font-bold ${on ? "border-teak bg-teak text-white" : "border-[#e0d2b8] bg-white text-ink"}`;
+  `min-h-10 rounded-full border px-3 text-sm font-bold ${on ? "border-teak bg-teak text-white" : "border-line-strong bg-card text-ink"}`;
 
 // ======================================================================
 // The room: trips, ideas, and anything shared into Veedu
@@ -246,7 +246,7 @@ function SharedFiles({ trips }: { trips: Trip[] }) {
     setError(null);
   };
   return (
-    <div role="status" className="mb-3 rounded-lg border border-brass bg-[#fffdf8] p-3 text-sm">
+    <div role="status" className="mb-3 rounded-lg border border-brass bg-card-warm p-3 text-sm">
       {error && <p className="m-0 mb-1 text-urgent">{error}</p>}
       {files && files.length > 0 && (
         <>
@@ -311,7 +311,7 @@ function TripCardView({
       </p>
       {pct != null && (
         <div
-          className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#efe4cf]"
+          className="mt-1 h-1.5 overflow-hidden rounded-full bg-track"
           role="img"
           aria-label={`${Math.round(pct)}% packed`}
         >
@@ -329,7 +329,7 @@ function TripCard({ t, today, onOpen }: { t: Trip; today: string; onOpen: () => 
     <button
       type="button"
       onClick={onOpen}
-      className="mb-2 block w-full overflow-hidden rounded-lg border border-[#e6d9c2] bg-white text-left"
+      className="mb-2 block w-full overflow-hidden rounded-lg border border-line bg-card text-left"
     >
       {/* eslint-disable-next-line @next/next/no-img-element -- signed URL to a private photo */}
       {cover && <img src={cover} alt="" className="h-24 w-full object-cover" />}
@@ -372,7 +372,7 @@ function TripOptions({
               type="button"
               aria-pressed={vibe === v}
               onClick={() => setVibe(v)}
-              className={`rounded-lg border p-2 text-left ${vibe === v ? "border-teak bg-[#f3ead9]" : "border-[#e0d2b8] bg-white"}`}
+              className={`rounded-lg border p-2 text-left ${vibe === v ? "border-teak bg-sunken" : "border-line-strong bg-card"}`}
             >
               <span className="block text-sm font-bold">
                 {VIBES[v].icon} {VIBES[v].label}
@@ -485,7 +485,7 @@ function NewTrip({
   return (
     <form
       onSubmit={submit}
-      className="mb-3 flex flex-col gap-5 rounded-lg border border-brass bg-[#fffdf8] p-4"
+      className="mb-3 flex flex-col gap-5 rounded-lg border border-brass bg-card-warm p-4"
       aria-label="Plan a trip"
     >
       <div className="grid grid-cols-2 gap-x-2 gap-y-3">
@@ -542,7 +542,7 @@ function NewTrip({
         extras={extras}
         setExtras={setExtras}
       />
-      <div className="flex flex-wrap items-center gap-3 border-t border-[#efe4cf] pt-4">
+      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
         <button type="submit" className={addBtn} disabled={!valid}>
           Plan it
         </button>
@@ -654,7 +654,7 @@ function EditTrip({ trip, onDone }: { trip: Trip; onDone: () => void }) {
         extras={extras}
         setExtras={setExtras}
       />
-      <div className="flex flex-wrap items-center gap-3 border-t border-[#efe4cf] pt-4">
+      <div className="flex flex-wrap items-center gap-3 border-t border-line pt-4">
         <button type="submit" className={addBtn} disabled={!valid}>
           Save
         </button>
@@ -736,7 +736,7 @@ function DoAgain({
     onCreated(id);
   };
   return (
-    <div className="mt-2 flex flex-wrap items-end gap-1.5 rounded-lg border border-brass bg-[#fffdf8] p-2.5">
+    <div className="mt-2 flex flex-wrap items-end gap-1.5 rounded-lg border border-brass bg-card-warm p-2.5">
       <label className="text-[11px] font-bold text-ink-2">
         New start date ({length + 1} days, like last time)
         <input
@@ -815,7 +815,7 @@ function TripPage({
       <button type="button" className={linkBtn} onClick={onBack}>
         ← All trips
       </button>
-      <div className="relative mb-2 overflow-hidden rounded-lg border border-[#e6d9c2] bg-white">
+      <div className="relative mb-2 overflow-hidden rounded-lg border border-line bg-card">
         {/* eslint-disable-next-line @next/next/no-img-element -- signed URL to a private photo */}
         {cover && <img src={cover} alt="" className="h-32 w-full object-cover" />}
         <div className="p-2.5">
@@ -834,7 +834,7 @@ function TripPage({
                   .map((t) => (
                     <span
                       key={t as string}
-                      className="rounded-full bg-[#f3ead9] px-2 py-px text-[11px] font-bold text-teak"
+                      className="rounded-full bg-sunken px-2 py-px text-[11px] font-bold text-teak"
                     >
                       {t}
                     </span>
@@ -888,7 +888,7 @@ function TripPage({
           <button
             key={id}
             type="button"
-            className="min-h-9 flex-none rounded-full border border-[#e6d9c2] bg-white px-3 text-xs font-bold"
+            className="min-h-9 flex-none rounded-full border border-line bg-card px-3 text-xs font-bold"
             onClick={() => jump(id)}
           >
             {label}
@@ -945,7 +945,7 @@ function NextSteps({ trip }: { trip: Trip }) {
   if (!plan.length && nights > 0) steps.push("🗓️ Add a few plans: type “Sat 7pm dinner at …”");
   if (trip.budget_planned == null) steps.push("💰 Set a budget");
   return (
-    <div className="mb-3 rounded-lg border border-[#cfe0c4] bg-[#f1f7ec] p-2.5 text-sm">
+    <div className="mb-3 rounded-lg border border-ok-line bg-ok p-2.5 text-sm">
       <p className="m-0 text-[11px] font-bold tracking-wider text-leaf uppercase">Next</p>
       {steps.length ? (
         steps.slice(0, 2).map((s) => (
@@ -974,7 +974,7 @@ function WeatherRow({ trip, wx }: { trip: Trip; wx: ReturnType<typeof useTripWea
           {wx.days.map((d) => (
             <div
               key={d.day}
-              className="min-w-[64px] flex-none rounded-lg border border-[#e6d9c2] bg-white px-2 py-1.5 text-center text-xs"
+              className="min-w-[64px] flex-none rounded-lg border border-line bg-card px-2 py-1.5 text-center text-xs"
             >
               <b className="block">{dayLabel(d.day, { weekday: "short" })}</b>
               <span className="block text-lg" aria-hidden="true">
@@ -1234,7 +1234,7 @@ function Packing({ trip, weather }: { trip: Trip; weather: Weather }) {
     <Sec title={pct === null ? "Packing" : `Packing · ${Math.round(pct)}% packed`}>
       {pct !== null && (
         <div
-          className="mb-2 h-2 overflow-hidden rounded-full bg-[#efe4cf]"
+          className="mb-2 h-2 overflow-hidden rounded-full bg-track"
           role="progressbar"
           aria-valuenow={Math.round(pct)}
           aria-valuemin={0}
@@ -1245,7 +1245,7 @@ function Packing({ trip, weather }: { trip: Trip; weather: Weather }) {
         </div>
       )}
       {me && !mine?.labels?.dressy && (
-        <div className="mb-2 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2.5 text-sm">
+        <div className="mb-2 rounded-lg border border-callout-line bg-callout p-2.5 text-sm">
           <p className="m-0 font-bold">What should we call your outfits?</p>
           <p className="m-0 text-xs text-ink-2">
             Your list splits day outfits into two kinds; this is just the wording on your list.
@@ -1311,7 +1311,7 @@ function Packing({ trip, weather }: { trip: Trip; weather: Weather }) {
             {list.map((p) => {
               const full = p.packed_count >= p.qty;
               return (
-                <div key={p.id} className="border-b border-dashed border-[#e6d9c2] last:border-b-0">
+                <div key={p.id} className="border-b border-dashed border-line last:border-b-0">
                   <div className="flex min-h-11 items-center gap-1.5">
                     <button
                       type="button"
@@ -1325,12 +1325,12 @@ function Packing({ trip, weather }: { trip: Trip; weather: Weather }) {
                             ? `${p.packed_count}/${p.qty} ${p.title} packed, pack one more`
                             : `Packed ${p.title}`
                       }
-                      className={`flex h-8 min-w-8 flex-none items-center justify-center rounded-md border px-1 text-xs font-bold ${full ? "border-leaf bg-leaf text-white" : p.packed_count ? "border-leaf bg-[#e6f0de] text-leaf" : "border-[#c9b796] bg-white"}`}
+                      className={`flex h-8 min-w-8 flex-none items-center justify-center rounded-md border px-1 text-xs font-bold ${full ? "border-leaf bg-leaf text-white" : p.packed_count ? "border-leaf bg-ok text-leaf" : "border-line-firm bg-card"}`}
                     >
                       {full ? "✓" : p.qty > 1 ? `${p.packed_count}/${p.qty}` : ""}
                     </button>
                     <span
-                      className={`min-w-0 flex-1 text-sm ${full ? "text-[#7a6b5d] line-through" : ""}`}
+                      className={`min-w-0 flex-1 text-sm ${full ? "text-ink-3 line-through" : ""}`}
                     >
                       {p.title}
                       {p.qty > 1 && <span className="text-ink-2"> ×{p.qty}</span>}
@@ -1462,7 +1462,7 @@ function AfterTrip({ trip }: { trip: Trip }) {
   };
   return (
     <div
-      className="mb-3 rounded-lg border border-brass bg-[#fffdf8] p-3 text-sm"
+      className="mb-3 rounded-lg border border-brass bg-card-warm p-3 text-sm"
       role="region"
       aria-label="How did packing go?"
     >
@@ -1480,7 +1480,7 @@ function AfterTrip({ trip }: { trip: Trip }) {
               type="button"
               aria-pressed={n > 0}
               onClick={() => setUnused({ ...unused, [p.id]: n >= p.qty ? 0 : n + 1 })}
-              className={`min-h-9 rounded-full border px-3 text-xs font-bold ${n ? "border-urgent bg-[#fdf0ec] text-urgent" : "border-[#e0d2b8] bg-white"}`}
+              className={`min-h-9 rounded-full border px-3 text-xs font-bold ${n ? "border-urgent bg-alert text-urgent" : "border-line-strong bg-card"}`}
             >
               {p.title}
               {n > 0 && ` · ${n} unused`}
@@ -1536,7 +1536,7 @@ function Itinerary({ trip }: { trip: Trip }) {
             {list.map((x) => (
               <div
                 key={x.id}
-                className="flex items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-sm"
+                className="flex items-center gap-2 border-b border-dashed border-line py-1 text-sm"
               >
                 <span className="w-12 flex-none text-xs text-ink-2">
                   {x.at_time ? x.at_time.slice(0, 5) : ""}
@@ -1554,7 +1554,7 @@ function Itinerary({ trip }: { trip: Trip }) {
         );
       })}
       {outside.length > 0 && (
-        <div className="mb-3 rounded-lg border border-dashed border-[#e7b2a8] bg-[#fdf0ec] p-2">
+        <div className="mb-3 rounded-lg border border-dashed border-alert-line bg-alert p-2">
           <p className="m-0 text-xs font-bold text-urgent">Not on the trip&apos;s dates any more</p>
           {outside.map((x) => (
             <div key={x.id} className="flex items-center gap-2 py-1 text-sm">
@@ -1634,7 +1634,7 @@ function QuickPlan({ trip, days }: { trip: Trip; days: string[] }) {
           →
           <select
             aria-label="Day"
-            className="min-h-9 rounded border border-[#dccdb2] bg-white px-1 text-xs"
+            className="min-h-9 rounded border border-line-strong bg-card px-1 text-xs"
             value={day}
             onChange={(e) => setDayOverride(e.target.value)}
           >
@@ -1698,7 +1698,7 @@ function Bookings({ trip }: { trip: Trip }) {
 function BookingCard({ b, trip, onDelete }: { b: Booking; trip: Trip; onDelete: () => void }) {
   const { data: url } = useSignedUrl(FILES_BUCKET, b.attachment_path);
   return (
-    <div className="mb-2 rounded-lg border border-[#e6d9c2] bg-white p-2.5 text-sm">
+    <div className="mb-2 rounded-lg border border-line bg-card p-2.5 text-sm">
       <div className="flex items-start gap-2">
         <span aria-hidden="true">{KIND_ICON[b.kind]}</span>
         <div className="min-w-0 flex-1">
@@ -1717,7 +1717,7 @@ function BookingCard({ b, trip, onDelete }: { b: Booking; trip: Trip; onDelete: 
           {b.confirmation_no && (
             <p className="m-0 mt-0.5 flex items-center gap-2 text-xs">
               Confirmation{" "}
-              <code className="rounded bg-[#f3ead9] px-1.5 py-0.5 font-bold tracking-wider">
+              <code className="rounded bg-sunken px-1.5 py-0.5 font-bold tracking-wider">
                 {b.confirmation_no}
               </code>
               <button
@@ -1813,7 +1813,7 @@ function AddBooking({ trip }: { trip: Trip }) {
   return (
     <form
       onSubmit={submit}
-      className="mb-3 grid grid-cols-2 gap-1.5 rounded-lg border border-brass bg-[#fffdf8] p-2.5"
+      className="mb-3 grid grid-cols-2 gap-1.5 rounded-lg border border-brass bg-card-warm p-2.5"
     >
       <select
         aria-label="Type"
@@ -1907,7 +1907,7 @@ function Budget({ trip }: { trip: Trip }) {
   const cur = trip.currency;
   return (
     <Sec title="Budget">
-      <div className="mb-2 rounded-lg border border-[#e6d9c2] bg-white p-2.5 text-sm">
+      <div className="mb-2 rounded-lg border border-line bg-card p-2.5 text-sm">
         <div className="flex justify-between">
           <span>Bookings</span>
           <b>{money(bookedSum, cur)}</b>
@@ -1916,13 +1916,13 @@ function Budget({ trip }: { trip: Trip }) {
           <span>Spent there</span>
           <b>{money(spentSum, cur)}</b>
         </div>
-        <div className="mt-1 flex justify-between border-t border-[#e6d9c2] pt-1">
+        <div className="mt-1 flex justify-between border-t border-line pt-1">
           <span>Total {plan != null && <>of {money(plan, cur)} planned</>}</span>
           <b className={over ? "text-urgent" : ""}>{money(total, cur)}</b>
         </div>
         {plan != null && plan > 0 && (
           <div
-            className="mt-1 h-2 overflow-hidden rounded-full bg-[#efe4cf]"
+            className="mt-1 h-2 overflow-hidden rounded-full bg-track"
             role="img"
             aria-label={`${Math.round((100 * total) / plan)}% of budget used`}
           >
@@ -2021,7 +2021,7 @@ function Budget({ trip }: { trip: Trip }) {
       ].map((r) => (
         <div
           key={r.key}
-          className="flex items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-sm"
+          className="flex items-center gap-2 border-b border-dashed border-line py-1 text-sm"
         >
           <span className="flex-1">
             {r.title}
@@ -2106,7 +2106,7 @@ function Ideas({ onPlan }: { onPlan: (idea: TripIdea) => void }) {
       {ideas.map((i) => (
         <div
           key={i.id}
-          className="flex items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-sm"
+          className="flex items-center gap-2 border-b border-dashed border-line py-1 text-sm"
         >
           <span className="flex-1">
             {i.vibe && <span aria-hidden="true">{VIBES[i.vibe].icon} </span>}

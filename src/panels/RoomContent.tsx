@@ -10,7 +10,7 @@ import type { RoomId } from "@/scene/config";
 const loading = () => <p className="text-sm text-ink-2">Opening…</p>;
 
 const loaders = {
-  living: () => Promise.all([import("./Dashboard"), import("./Notes")]),
+  living: () => Promise.all([import("./Dashboard"), import("./Notes"), import("./WallPhotos")]),
   kitchen: () => Promise.all([import("./ShoppingList"), import("./Recipes")]),
   office: () => Promise.all([import("./Calendar"), import("./Tasks"), import("./Milestones")]),
   wash: () => import("./Chores"),
@@ -22,11 +22,13 @@ const loaders = {
 const ROOMS: Record<RoomId, React.ComponentType> = {
   living: dynamic(
     () =>
-      loaders.living().then(([d, n]) => {
+      loaders.living().then(([d, n, w]) => {
         const Living = () => (
           <>
             <d.Dashboard />
             <n.NotesBoard />
+            <w.WallPhotos />
+            <w.JasmineNote />
             <d.TogetherCounter />
             <d.ActivityFeed />
           </>

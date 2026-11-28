@@ -5,6 +5,7 @@ import { useState } from "react";
 import { dueLabel, dueState, weekStartKey } from "@/lib/lists/dates";
 import { describeRepeat, firstOccurrence, nextOccurrence, toRRule, type Repeat, type Weekday } from "@/lib/lists/recurrence";
 import { live, rowsKey, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
+import { celebrate } from "@/lib/feel";
 import { toast } from "@/lib/lists/toast";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { formatToronto, torontoDayKey, torontoToUtc } from "@/lib/time";
@@ -69,6 +70,7 @@ export function Chores() {
       toast(`Couldn't save: ${(err as { message?: string }).message ?? "error"}`, { tone: "error" });
     },
     onSuccess: ({ id, next, chore }) => {
+      celebrate("chore");
       const label = dueLabel(next);
       toast(`Done! “${chore.title}” is next due ${/^(Today|Tomorrow|Yesterday)/.test(label) ? label.toLowerCase() : label}`, {
         action: {
@@ -163,7 +165,7 @@ function DoneRow({ c, who, title }: { c: Completion; who: string; title: string 
     qc.invalidateQueries({ queryKey: rowsKey("chore_completions") });
   };
   return (
-    <div className="flex min-h-11 items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-sm last:border-b-0">
+    <div className="flex min-h-11 items-center gap-2 border-b border-dashed border-line py-1 text-sm last:border-b-0">
       <p className="m-0 grow">
         <b>{who}</b> did {title}
         <span className="text-ink-2"> · {formatToronto(c.completed_at, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
@@ -191,13 +193,13 @@ function ChoreRow({ c, onDone, m }: { c: Chore; onDone: () => void; m: ReturnTyp
   const { me, partner } = usePeople();
   const state = dueState(c.next_due_at);
   return (
-    <div className="border-b border-dashed border-[#e6d9c2] last:border-b-0">
+    <div className="border-b border-dashed border-line last:border-b-0">
       <div className="flex min-h-11 items-center gap-2.5 py-1.5 text-sm">
         <button
           type="button"
           onClick={onDone}
           aria-label={`Done: ${c.title}`}
-          className={`min-h-9 flex-none rounded-full border px-3 text-xs font-bold ${state === "overdue" || state === "today" ? "border-red-oxide bg-red-oxide text-white" : "border-[#e0d2b8] bg-white text-ink"}`}
+          className={`min-h-9 flex-none rounded-full border px-3 text-xs font-bold ${state === "overdue" || state === "today" ? "border-red-oxide bg-red-oxide text-white" : "border-line-strong bg-card text-ink"}`}
         >
           Done
         </button>
@@ -214,7 +216,7 @@ function ChoreRow({ c, onDone, m }: { c: Chore; onDone: () => void; m: ReturnTyp
         <WhoChip memberId={c.assignee_id} />
       </div>
       {open && (
-        <div className="mb-2 ml-2 flex flex-wrap items-center gap-2 rounded-lg bg-[#fffdf8] p-2 text-sm">
+        <div className="mb-2 ml-2 flex flex-wrap items-center gap-2 rounded-lg bg-card-warm p-2 text-sm">
           <label className="flex items-center gap-1.5">
             <span className="text-xs text-ink-2">Who</span>
             <select
@@ -284,7 +286,7 @@ function AddChore({ onAdd }: { onAdd: (c: Partial<Chore>) => void }) {
         </button>
       </div>
       {open && (
-        <div className="mt-1.5 space-y-1.5 rounded-lg bg-[#fffdf8] p-2 text-sm">
+        <div className="mt-1.5 space-y-1.5 rounded-lg bg-card-warm p-2 text-sm">
           <div className="flex flex-wrap items-center gap-1.5">
             <span className="text-xs text-ink-2">Repeat every</span>
             <input type="number" min={1} max={52} aria-label="Interval" className={`${smallSelect} w-16`} value={every} onChange={(e) => setEvery(Math.max(1, Number(e.target.value) || 1))} />
@@ -303,7 +305,7 @@ function AddChore({ onAdd }: { onAdd: (c: Partial<Chore>) => void }) {
                   aria-pressed={days.includes(d)}
                   aria-label={d}
                   onClick={() => setDays((cur) => (cur.includes(d) ? (cur.length > 1 ? cur.filter((x) => x !== d) : cur) : [...cur, d]))}
-                  className={`h-11 w-11 rounded-full border text-xs font-bold ${days.includes(d) ? "border-teak bg-teak text-white" : "border-[#e0d2b8] bg-white"}`}
+                  className={`h-11 w-11 rounded-full border text-xs font-bold ${days.includes(d) ? "border-teak bg-teak text-white" : "border-line-strong bg-card"}`}
                 >
                   {l}
                 </button>

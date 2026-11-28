@@ -4,6 +4,14 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-29 | Panels follow the sun with four looks (morning, day, dusk, night) via colour tokens redefined on `html[data-look]`; hard-coded hex colours in panels replaced by tokens | One switch changes every panel consistently; registered CSS properties let it fade; axe checks both day and night |
+| 2026-11-29 | Nameplate, chappals (from a once-a-day `last_seen_on`, no location), three wall photos, a jasmine that grows with things done together (never shrinks or wilts) | Harsh's picks from the homey brainstorm; nothing that guilts or tracks |
+| 2026-11-29 | Festivals and seasons computed on the device (`decor.ts`) with a small table of moving dates (Onam 2026–28; Diwali, Vishu 2026–30); unknown years show nothing rather than a guess | Almanacs disagreed for Onam after 2028; better no pookalam than one on the wrong day |
+| 2026-11-29 | Garlands also both anniversaries (Oct 18 and Sep 11); Halloween pumpkins sit among the autumn leaves | Harsh's answers |
+| 2026-11-29 | All sounds synthesised with Web Audio (no recordings) instead of downloading CC0 clips | No files to license, host or download; works offline; still $0 |
+| 2026-11-29 | iPhone haptics through a hidden `<input type="checkbox" switch>` (iOS 18+) | iOS Safari has no vibration API; this is the only web option, and failing silently is harmless |
+| 2026-11-29 | Homey decorations built once and shown/hidden; small pieces don't cast shadows; repeats are instanced | Draw calls ~200 → ~225 on the default view; frame rate unchanged |
+| 2026-11-29 | The app reads the new columns but falls back if the migration hasn't run yet | Vercel deploys on push before the SQL is run by hand |
 | 2026-11-28 | Trips v2: vibe (city / beach / cottage / event), transport and extras drive a pure packing-rules engine (`src/lib/packing.ts`); per-person lists plus one shared list; outfit wording chosen per person | Harsh wanted the least friction: the list should already be right. "Confident & Cozy" for him; "Cute & Comfy" offered to Prerna |
 | 2026-11-28 | Suggested items carry a `rule_key`; a unique index (trip, owner, rule) stops both phones adding the same suggestion; hand edits set `edited` and are never overwritten; removing a suggestion sets qty 0 (not a delete) | So re-suggesting after a date or weather change can't undo your edits or bring back what you removed |
 | 2026-11-28 | Learning is per person and per vibe (outfit share, quantity deltas, always-add, never-pack), stored in `packing_profiles` and only changed when you say "Remember" or do the after-trip check-in | Predictable: nothing changes silently. Nothing is sent to an AI service |

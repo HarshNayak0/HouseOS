@@ -1,14 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-test("evening mode and view choices are remembered on this device", async ({ page }) => {
+test("look and view choices are remembered on this device", async ({ page }) => {
   await page.goto("/settings");
-  const evening = page.getByRole("group", { name: "Evening mode" });
-  await expect(evening.getByRole("radio", { name: /Automatic, at Toronto sunset/ })).toBeChecked();
+  const evening = page.getByRole("group", { name: "Look" });
+  await expect(evening.getByRole("radio", { name: /Follows the sun in Toronto/ })).toBeChecked();
   await expect(evening.getByText(/sunset today \d{1,2}:\d{2}/)).toBeVisible();
-  await evening.getByRole("radio", { name: /Always evening/ }).check();
+  await evening.getByRole("radio", { name: /Always night/ }).check();
+  // the panels turn to the night look straight away
+  await expect(page.locator("html")).toHaveAttribute("data-look", "night");
   await page.getByRole("group", { name: "Camera animations" }).getByRole("radio", { name: /Always fly/ }).check();
   await page.reload();
-  await expect(page.getByRole("group", { name: "Evening mode" }).getByRole("radio", { name: /Always evening/ })).toBeChecked();
+  await expect(page.getByRole("group", { name: "Look" }).getByRole("radio", { name: /Always night/ })).toBeChecked();
+  await expect(page.locator("html")).toHaveAttribute("data-look", "night");
   await expect(page.getByRole("group", { name: "Camera animations" }).getByRole("radio", { name: /Always fly/ })).toBeChecked();
 });
 

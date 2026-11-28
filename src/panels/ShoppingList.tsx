@@ -3,10 +3,11 @@
 import { useMemo, useRef, useState } from "react";
 import { live, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
+import { celebrate } from "@/lib/feel";
 import { useNow } from "@/lib/lists/useNow";
 import { dueStaples, type FrequencyRow } from "@/lib/staples";
 import { usePeople } from "./ui";
-import { Check, EmptyState, IconButton, PartnerHint, Row, Sec, Trash, TrashIcon, addBtn, inputCls, linkBtn, smallSelect } from "./ui";
+import { Basket, Check, EmptyState, IconButton, PartnerHint, Row, Sec, Trash, TrashIcon, addBtn, inputCls, linkBtn, smallSelect } from "./ui";
 
 export interface ShoppingItem extends BaseRow {
   name: string;
@@ -48,6 +49,14 @@ export function ShoppingList() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const items = live(rows);
+  const [bounce, setBounce] = useState(0);
+  const checkItem = (i: ShoppingItem, v: boolean) => {
+    m.update(i.id, { checked_at: v ? new Date().toISOString() : null });
+    if (v) {
+      celebrate("check");
+      setBounce((b) => b + 1);
+    }
+  };
   const open = items.filter((i) => !i.checked_at);
   const checked = items.filter((i) => i.checked_at);
   const stores = useMemo(() => {
@@ -138,9 +147,9 @@ export function ShoppingList() {
         </div>
       </form>
       {staples.length > 0 && (
-        <div className="mt-2 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2" aria-label="Probably running low">
+        <div className="mt-2 rounded-lg border border-callout-line bg-callout p-2" aria-label="Probably running low">
           <div className="mb-1 flex items-center justify-between">
-            <span className="text-[11px] font-bold text-[#7d5a1a]">Probably running low</span>
+            <span className="text-[11px] font-bold text-callout-ink">Probably running low</span>
             <button
               type="button"
               className="min-h-9 text-xs font-bold text-teak underline"
@@ -160,7 +169,7 @@ export function ShoppingList() {
                 onClick={() => add(x.name, x.store)}
                 title={`Usually every ${x.everyDays} days · last added ${x.sinceDays} days ago`}
                 aria-label={`Add ${x.name}: usually every ${x.everyDays} days, last added ${x.sinceDays} days ago`}
-                className="min-h-9 rounded-full border border-[#e9d4a4] bg-white px-3 text-xs font-bold text-teak"
+                className="min-h-9 rounded-full border border-callout-line bg-card px-3 text-xs font-bold text-teak"
               >
                 + {x.name}
               </button>
@@ -176,7 +185,7 @@ export function ShoppingList() {
               key={s.normalized_name}
               type="button"
               onClick={() => add(s.display_name, s.last_store)}
-              className="min-h-9 rounded-full border border-[#e6d9c2] bg-white px-3 text-xs font-bold text-teak"
+              className="min-h-9 rounded-full border border-line bg-card px-3 text-xs font-bold text-teak"
             >
               + {s.display_name}
             </button>
@@ -191,7 +200,7 @@ export function ShoppingList() {
             hint="Add what you need and it shows up on both phones instantly. Pick a store to group things."
             example={
               <Row>
-                <span className="h-[18px] w-[18px] flex-none rounded border border-[#c9b796]" />
+                <span className="h-[18px] w-[18px] flex-none rounded border border-line-firm" />
                 <span className="grow">
                   Coconut milk <span className="block text-xs text-ink-2">Indian grocery</span>
                 </span>
@@ -203,20 +212,23 @@ export function ShoppingList() {
           <div key={s}>
             <div className="mt-2 text-xs font-bold text-ink-2">{s}</div>
             {list.map((i) => (
-              <ItemRow key={i.id} item={i} onCheck={(v) => m.update(i.id, { checked_at: v ? new Date().toISOString() : null })} onDelete={() => m.remove(i.id, `Removed ${i.name}`)} onRename={(n) => m.update(i.id, { name: n })} />
+              <ItemRow key={i.id} item={i} onCheck={(v) => checkItem(i, v)} onDelete={() => m.remove(i.id, `Removed ${i.name}`)} onRename={(n) => m.update(i.id, { name: n })} />
             ))}
           </div>
         ))}
         {checked.length > 0 && (
           <div className="mt-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-ink-2">In the basket ({checked.length})</span>
+              <span className="flex items-center gap-1.5 text-xs font-bold text-ink-2">
+                <Basket bounce={bounce} />
+                In the basket ({checked.length})
+              </span>
               <button type="button" className={linkBtn} onClick={clearChecked}>
                 Clear checked
               </button>
             </div>
             {checked.map((i) => (
-              <ItemRow key={i.id} item={i} onCheck={(v) => m.update(i.id, { checked_at: v ? new Date().toISOString() : null })} onDelete={() => m.remove(i.id, `Removed ${i.name}`)} onRename={(n) => m.update(i.id, { name: n })} />
+              <ItemRow key={i.id} item={i} onCheck={(v) => checkItem(i, v)} onDelete={() => m.remove(i.id, `Removed ${i.name}`)} onRename={(n) => m.update(i.id, { name: n })} />
             ))}
           </div>
         )}
@@ -239,11 +251,18 @@ function ItemRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(item.name);
+  const [dropping, setDropping] = useState(false);
   const { byId } = usePeople();
   const by = item.checked_at ? byId(item.checked_by) : null;
+  // ticking an item off: it shrinks and drops into the basket, then moves there
+  const check = (v: boolean) => {
+    if (!v || dropping) return onCheck(v);
+    setDropping(true);
+    setTimeout(() => onCheck(true), 330);
+  };
   return (
-    <Row done={!!item.checked_at}>
-      <Check checked={!!item.checked_at} onChange={onCheck} label={`Got ${item.name}`} />
+    <Row done={!!item.checked_at || dropping} className={dropping ? "moment-drop" : ""}>
+      <Check checked={!!item.checked_at || dropping} onChange={check} label={`Got ${item.name}`} />
       <div className="grow min-w-0">
         {editing ? (
           <input
@@ -308,12 +327,12 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
   return (
     <div className="mb-2">
       {theirs.map((v) => (
-        <div key={v.id} role="status" className="mb-1.5 rounded-lg border border-[#cfe0c4] bg-[#f1f7ec] px-3 py-2 text-sm">
+        <div key={v.id} role="status" className="mb-1.5 rounded-lg border border-ok-line bg-ok px-3 py-2 text-sm">
           🛒 <b>{byId(v.member_id)?.display_name ?? "Your partner"}</b> is at <b>{v.store}</b> now ({mins(v)} min). Add anything you need and it&apos;s sent to them.
         </div>
       ))}
       {mine ? (
-        <div className="flex items-center gap-2 rounded-lg border border-[#cfe0c4] bg-[#f1f7ec] px-3 py-2 text-sm">
+        <div className="flex items-center gap-2 rounded-lg border border-ok-line bg-ok px-3 py-2 text-sm">
           <span className="flex-1">
             🛒 You&apos;re at <b>{mine.store}</b>. New items from your partner come to you as notifications.
           </span>
@@ -323,7 +342,7 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
         </div>
       ) : picking ? (
         <form
-          className="flex flex-wrap items-center gap-1.5 rounded-lg border border-brass bg-[#fffdf8] p-2"
+          className="flex flex-wrap items-center gap-1.5 rounded-lg border border-brass bg-card-warm p-2"
           onSubmit={(e) => {
             e.preventDefault();
             start(store);
@@ -331,7 +350,7 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
         >
           <span className="w-full text-xs font-bold text-ink-2">Which store?</span>
           {stores.map((s) => (
-            <button key={s} type="button" onClick={() => start(s)} className="min-h-9 rounded-full border border-[#e6d9c2] bg-white px-3 text-xs font-bold text-teak">
+            <button key={s} type="button" onClick={() => start(s)} className="min-h-9 rounded-full border border-line bg-card px-3 text-xs font-bold text-teak">
               {s}
             </button>
           ))}
@@ -350,7 +369,7 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
             setStore("");
             setPicking(true);
           }}
-          className="min-h-10 w-full rounded-lg border border-dashed border-[#cfe0c4] bg-white text-sm font-bold text-leaf"
+          className="min-h-10 w-full rounded-lg border border-dashed border-ok-line bg-card text-sm font-bold text-leaf"
           aria-describedby="store-hint"
         >
           🛒 I&apos;m at the store

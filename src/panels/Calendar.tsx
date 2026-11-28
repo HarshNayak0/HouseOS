@@ -64,7 +64,7 @@ export function CalendarView() {
       }
     >
       {!connected && !loading && (
-        <div className="mb-2 rounded-lg border border-dashed border-[#e0d2b8] bg-[#fffdf8] p-3 text-sm">
+        <div className="mb-2 rounded-lg border border-dashed border-line-strong bg-card-warm p-3 text-sm">
           <p className="m-0 font-bold">Connect Google Calendar</p>
           <p className="mt-1 mb-2 text-ink-2">See both your calendars here, colour-coded, and add events from the house.</p>
           <Link href="/settings#calendars" className={`${addBtn} inline-flex items-center`}>
@@ -78,14 +78,14 @@ export function CalendarView() {
         <button type="button" aria-label="Previous" className="h-11 w-9 rounded-lg text-lg" onClick={() => step(-1)}>
           ‹
         </button>
-        <button type="button" className="min-h-9 rounded-full border border-[#e0d2b8] bg-white px-2.5 text-xs font-bold" onClick={() => (setCursor(today), setSelected(today))}>
+        <button type="button" className="min-h-9 rounded-full border border-line-strong bg-card px-2.5 text-xs font-bold" onClick={() => (setCursor(today), setSelected(today))}>
           Today
         </button>
         <button type="button" aria-label="Next" className="h-11 w-9 rounded-lg text-lg" onClick={() => step(1)}>
           ›
         </button>
         <span className="grow text-sm font-bold">{title}</span>
-        <div className="flex rounded-full border border-[#e0d2b8] bg-white p-0.5" role="group" aria-label="Calendar view">
+        <div className="flex rounded-full border border-line-strong bg-card p-0.5" role="group" aria-label="Calendar view">
           {(["day", "week", "month"] as View[]).map((v) => (
             <button
               key={v}
@@ -147,7 +147,7 @@ function MonthGrid({
             aria-pressed={d === selected}
             aria-label={`${label(d, { weekday: "long", month: "long", day: "numeric" })}, ${list.length} item${list.length === 1 ? "" : "s"}`}
             onClick={() => onPick(d)}
-            className={`flex min-h-11 flex-col items-center rounded-lg border pt-1 text-[12px] ${d === selected ? "border-teak bg-[#f3ead9]" : d === today ? "border-red-oxide bg-[#fdf3ef]" : "border-[#eee3cf] bg-white"} ${inMonth ? "" : "border-transparent bg-transparent text-ink-2"}`}
+            className={`flex min-h-11 flex-col items-center rounded-lg border pt-1 text-[12px] ${d === selected ? "border-teak bg-sunken" : d === today ? "border-red-oxide bg-alert" : "border-line bg-card"} ${inMonth ? "" : "border-transparent bg-transparent text-ink-2"}`}
           >
             <b className={d === today ? "text-red-oxide" : ""}>{Number(d.slice(8))}</b>
             <span className="mt-0.5 flex min-h-[6px] flex-wrap justify-center gap-[2px] px-0.5">
@@ -164,7 +164,7 @@ function MonthGrid({
 
 function DayList({ day, items, today, compact }: { day: string; items: CalItem[]; today: string; compact?: boolean }) {
   return (
-    <div className={compact ? "border-b border-dashed border-[#e6d9c2] py-1.5 last:border-b-0" : "mt-3"}>
+    <div className={compact ? "border-b border-dashed border-line py-1.5 last:border-b-0" : "mt-3"}>
       <div className={`text-xs font-bold ${day === today ? "text-red-oxide" : "text-ink-2"}`}>
         {day === today ? "Today · " : ""}
         {label(day, { weekday: "long", month: "short", day: "numeric" })}
@@ -210,7 +210,7 @@ function ItemRow({ i }: { i: CalItem }) {
         {i.kind !== "milestone" && <WhoChip memberId={i.who} small />}
       </button>
       {open && i.event && (
-        <div className="mb-2 ml-3 rounded-lg bg-[#fffdf8] p-2 text-sm">
+        <div className="mb-2 ml-3 rounded-lg bg-card-warm p-2 text-sm">
           {i.event.location && <p className="m-0">📍 {i.event.location}</p>}
           {i.event.description && <p className="m-0 mt-1 line-clamp-3 text-ink-2">{i.event.description}</p>}
           <div className="mt-1 flex flex-wrap gap-3">
@@ -280,7 +280,7 @@ function AddEvent({ sources, defaultDay, onDone }: { sources: CalendarSource[]; 
   };
   if (!writable.length) return <p className="text-sm text-ink-2">None of the shown calendars can be written to.</p>;
   return (
-    <form onSubmit={submit} className="mb-3 space-y-1.5 rounded-lg bg-[#fffdf8] p-2">
+    <form onSubmit={submit} className="mb-3 space-y-1.5 rounded-lg bg-card-warm p-2">
       <input className={`${inputCls} w-full`} placeholder="Event title" aria-label="Event title" value={title} maxLength={300} onChange={(e) => setTitle(e.target.value)} autoFocus />
       <div className="flex flex-wrap gap-1.5">
         <input type="date" aria-label="Date" className={smallSelect} value={date} onChange={(e) => (setDate(e.target.value), endDate < e.target.value && setEndDate(e.target.value))} />

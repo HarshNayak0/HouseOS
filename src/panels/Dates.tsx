@@ -88,7 +88,7 @@ export function DateIdeas() {
       <Sec
         title="Our dates"
         right={
-          <button type="button" onClick={surprise} className="min-h-9 rounded-full border border-brass bg-white px-3 text-xs font-bold tracking-normal text-teak normal-case">
+          <button type="button" onClick={surprise} className="min-h-9 rounded-full border border-brass bg-card px-3 text-xs font-bold tracking-normal text-teak normal-case">
             🌼 Surprise me
           </button>
         }
@@ -108,8 +108,8 @@ export function DateIdeas() {
           const d = ideas.find((x) => x.id === picked);
           if (!d) return null;
           return (
-            <div className="mb-3 rotate-[-1deg] rounded-md border border-[#e9d4a4] bg-[#fff8e6] p-3 shadow-md" role="status">
-              <p className="m-0 text-[11px] font-bold tracking-wider text-[#7d5a1a] uppercase">From the uruli 🌼</p>
+            <div className="mb-3 rotate-[-1deg] rounded-md border border-callout-line bg-callout p-3 shadow-md" role="status">
+              <p className="m-0 text-[11px] font-bold tracking-wider text-callout-ink uppercase">From the uruli 🌼</p>
               <p className="m-0 mt-1 font-serif text-lg font-semibold">{d.title}</p>
               <p className="m-0 text-xs text-ink-2">{[COST[d.cost], DURATION[d.duration], d.location].filter(Boolean).join(" · ")}</p>
               <div className="mt-2 flex gap-2">
@@ -150,7 +150,7 @@ export function DateIdeas() {
                 title="Start a wishlist"
                 hint="Jot down dates you'd like to go on. “Surprise me” draws one from the brass uruli when you can't decide."
                 example={
-                  <div className="rounded-lg border border-[#e6d9c2] bg-white p-2.5">
+                  <div className="rounded-lg border border-line bg-card p-2.5">
                     <IdeaCardView d={{ title: "Sunset walk at the Bluffs", cost: 0, duration: "evening", tags: ["Outdoors"], location: "Scarborough Bluffs" }} />
                   </div>
                 }
@@ -254,7 +254,7 @@ function IdeaCardView({ d }: { d: Pick<DateIdea, "title" | "cost" | "duration" |
       <b className="text-sm">{d.title}</b>
       <div className="mt-0.5">
         {[COST[d.cost], DURATION[d.duration], ...d.tags].map((t) => (
-          <span key={t} className="mr-1 inline-block rounded-full bg-[#f3ead9] px-2 py-px text-[10.5px] font-bold text-teak">
+          <span key={t} className="mr-1 inline-block rounded-full bg-sunken px-2 py-px text-[10.5px] font-bold text-teak">
             {t}
           </span>
         ))}
@@ -281,7 +281,7 @@ function IdeaCard({
 }) {
   const { byUser } = usePeople();
   return (
-    <div className={`mb-2 rounded-lg border bg-white p-2.5 transition-[transform,box-shadow] duration-200 ${highlight ? "scale-[1.02] border-brass shadow-[0_0_0_2px_#B8893B]" : "border-[#e6d9c2]"}`}>
+    <div className={`mb-2 rounded-lg border bg-card p-2.5 transition-[transform,box-shadow] duration-200 ${highlight ? "scale-[1.02] border-brass shadow-[0_0_0_2px_#B8893B]" : "border-line"}`}>
       <IdeaCardView d={d} />
       {d.planned_for && <p className="m-0 mt-1 text-xs font-bold text-red-oxide">🗓 {dueLabel(d.planned_for, true)}</p>}
       {d.link && (
@@ -349,7 +349,7 @@ function ScheduleSheet({ d, onClose }: { d: DateIdea; onClose: () => void }) {
     onClose();
   };
   return (
-    <div role="dialog" aria-label={`Schedule ${d.title}`} className="mt-3 rounded-lg border border-brass bg-[#fffdf8] p-3 text-sm">
+    <div role="dialog" aria-label={`Schedule ${d.title}`} className="mt-3 rounded-lg border border-brass bg-card-warm p-3 text-sm">
       <p className="m-0 font-bold">When is “{d.title}”?</p>
       <div className="mt-2 flex gap-1.5">
         <input type="date" aria-label="Date" className={smallSelect} value={day} min={torontoDayKey(new Date())} onChange={(e) => setDay(e.target.value)} />
@@ -417,13 +417,13 @@ function MemoryForm({ d, onClose, onSaved }: { d: DateIdea; onClose: () => void;
     setBusy(false);
   };
   return (
-    <div role="dialog" aria-label={`Remember ${d.title}`} className="mt-3 space-y-2 rounded-lg border border-brass bg-[#fffdf8] p-3 text-sm">
+    <div role="dialog" aria-label={`Remember ${d.title}`} className="mt-3 space-y-2 rounded-lg border border-brass bg-card-warm p-3 text-sm">
       <p className="m-0 font-bold">How was “{d.title}”?</p>
       <input type="date" aria-label="When" className={smallSelect} value={day} max={torontoDayKey(new Date())} onChange={(e) => setDay(e.target.value)} />
       <div>
         <Stars value={stars} onChange={setStars} label="Your rating" />
       </div>
-      <textarea rows={3} maxLength={2000} className="w-full rounded-lg border border-[#dccdb2] bg-white p-2" placeholder="A memory to keep…" aria-label="Memory note" value={note} onChange={(e) => setNote(e.target.value)} />
+      <textarea rows={3} maxLength={2000} className="w-full rounded-lg border border-line-strong bg-card p-2" placeholder="A memory to keep…" aria-label="Memory note" value={note} onChange={(e) => setNote(e.target.value)} />
       <label className="flex min-h-11 items-center gap-2 text-xs">
         <span className="font-bold text-ink-2">Photo</span>
         <input type="file" accept="image/*" aria-label="Memory photo" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
@@ -445,7 +445,7 @@ function Memories() {
   const list = live(rows);
   if (!list.length) return <p className="text-sm text-ink-2">Mark a date as done and it lands here, with a photo and both your ratings.</p>;
   return (
-    <ol className="relative m-0 list-none border-l-2 border-[#e9d4a4] p-0 pl-4">
+    <ol className="relative m-0 list-none border-l-2 border-callout-line p-0 pl-4">
       {list.map((mem) => (
         <MemoryItem key={mem.id} mem={mem} />
       ))}
@@ -525,7 +525,7 @@ function BothFree({ d, picked, onPick }: { d: DateIdea; picked: string; onPick: 
                 type="button"
                 aria-pressed={picked === key}
                 onClick={() => onPick(s.start)}
-                className={`min-h-9 rounded-full border px-3 text-xs font-bold ${picked === key ? "border-leaf bg-leaf text-white" : "border-[#cfe0c4] bg-white text-leaf"}`}
+                className={`min-h-9 rounded-full border px-3 text-xs font-bold ${picked === key ? "border-leaf bg-leaf text-white" : "border-ok-line bg-card text-leaf"}`}
               >
                 {formatToronto(s.start, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
               </button>

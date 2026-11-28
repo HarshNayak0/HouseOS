@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { INSTANCE } from "@/lib/instance";
 import { sunTimes } from "@/lib/sun";
+import { LOOK_CHANGED } from "@/lib/look";
 import { formatToronto, torontoDayKey } from "@/lib/time";
 import {
   prefersReducedMotion,
@@ -109,19 +110,22 @@ export function EveningSetting() {
   const choose = (v: EveningPref) => {
     setPref(v);
     writeEveningPref(v);
+    window.dispatchEvent(new Event(LOOK_CHANGED));
   };
   const opts: { v: EveningPref; label: string; hint: string }[] = [
     {
       v: "auto",
-      label: `Automatic, at ${INSTANCE.city} sunset`,
-      hint: today ? `The lamps light at dusk (sunset today ${today.sunset}) and go out after sunrise (${today.sunrise})` : "The lamps light at dusk and go out after sunrise",
+      label: `Follows the sun in ${INSTANCE.city}`,
+      hint: today
+        ? `Bright in the morning, warm amber at dusk (sunset today ${today.sunset}), dark teak at night; lamps light at dusk and go out after sunrise (${today.sunrise})`
+        : "Bright in the morning, warm amber at dusk, dark teak at night",
     },
-    { v: "day", label: "Always daytime", hint: "The Evening button still switches it for a while" },
-    { v: "evening", label: "Always evening", hint: "Dusk sky and lit lamps all day" },
+    { v: "day", label: "Always day", hint: "Daylight look and sky all day; the Evening button still switches it for a while" },
+    { v: "evening", label: "Always night", hint: "Dark panels, dusk sky and lit lamps all day" },
   ];
   return (
     <fieldset className="m-0 border-0 p-0">
-      <legend className="mb-2 font-bold">Evening mode</legend>
+      <legend className="mb-2 font-bold">Look</legend>
       {opts.map((o) => (
         <label key={o.v} className="flex min-h-11 cursor-pointer items-start gap-3 py-1.5">
           <input type="radio" name="evening" checked={pref === o.v} onChange={() => choose(o.v)} className="mt-1 h-[18px] w-[18px] accent-red-oxide" />

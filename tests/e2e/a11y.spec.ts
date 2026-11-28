@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 /** Automated WCAG 2.1 A/AA checks (axe). The 3D canvas itself is skipped: the 2D plan is its accessible twin. */
 async function audit(page: Page) {
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).exclude("canvas").analyze();
-  const summary = r.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ")).slice(0, 3).join(", ")}`);
+  const summary = r.violations.map((v) => `${v.id} (${v.impact}): ${v.nodes.map((n) => n.target.join(" ") + (process.env.AXE_DEBUG ? " " + n.html + " " + n.failureSummary : "")).slice(0, 3).join(", ")}`);
   expect(summary).toEqual([]);
 }
 
@@ -28,6 +28,24 @@ test("accessible: 2D floor plan", async ({ page }) => {
   await expect(page.getByRole("link", { name: /^Kitchen/ })).toBeVisible();
   await audit(page);
 });
+
+// the same pages in the night look (dark teak panels) and the dusk look
+for (const look of ["evening", "day"] as const) {
+  test(`accessible: settings and kitchen in the ${look === "evening" ? "night" : "day"} look`, async ({ page }) => {
+    await use2D(page);
+    await page.addInitScript((v) => {
+      try {
+        localStorage.setItem("veedu.evening", v);
+      } catch {}
+    }, look);
+    await page.goto("/settings");
+    await expect(page.locator("html")).toHaveAttribute("data-look", look === "evening" ? "night" : "day");
+    await audit(page);
+    await page.goto("/kitchen");
+    await expect(page.getByRole("button", { name: "Close panel" })).toBeVisible();
+    await audit(page);
+  });
+}
 
 for (const room of ["kitchen", "closet", "backyard"]) {
   test(`accessible: ${room} panel`, async ({ page }) => {

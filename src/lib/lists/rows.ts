@@ -12,6 +12,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { authEnabled } from "@/lib/supabase/config";
 import { markPartnerEdit } from "./presence";
 import { toast } from "./toast";
+import { buzz } from "../feel";
 
 export type ListTable =
   | "shopping_items"
@@ -167,6 +168,7 @@ export function useRowMutation<T extends { id: string }>(table: ListTable) {
     update: (id: string, patch: Partial<T>) => m.mutate({ op: "update", id, patch }),
     /** Soft delete with an Undo toast. */
     remove: (id: string, label = "Deleted") => {
+      buzz("delete");
       m.mutate({ op: "update", id, patch: { deleted_at: new Date().toISOString() } as unknown as Partial<T> });
       toast(label, { action: { label: "Undo", run: () => m.mutate({ op: "update", id, patch: { deleted_at: null } as unknown as Partial<T> }) } });
     },

@@ -4,6 +4,7 @@ import { authEnabled } from "@/lib/supabase/config";
 import { AccountSettings, Section } from "./AccountSettings";
 import { EveningSetting, MotionSetting, ViewSetting } from "./SettingsView";
 import { UsageSettings } from "./UsageSettings";
+import { FeelSettings, HouseDecorSettings } from "./HouseSettings";
 
 export const metadata: Metadata = { title: "Settings · Veedu" };
 
@@ -17,7 +18,16 @@ export default function SettingsPage() {
         <div className="kasavu" />
         <div className="p-4">
           <h1 className="m-0 font-serif text-[26px] font-semibold">Settings</h1>
-          {authEnabled ? <AccountSettings /> : <p className="mt-3 text-sm text-ink-2">Sign-in isn&apos;t set up yet, so only this device&apos;s settings are shown.</p>}
+          {authEnabled ? (
+            <>
+              <AccountSettings />
+              <HouseDecorSettings />
+            </>
+          ) : (
+            <p className="mt-3 text-sm text-ink-2">
+              Sign-in isn&apos;t set up yet, so only this device&apos;s settings are shown.
+            </p>
+          )}
           <Section title="This device">
             <ViewSetting />
             <div className="mt-4">
@@ -25,6 +35,10 @@ export default function SettingsPage() {
             </div>
             <div className="mt-4">
               <EveningSetting />
+            </div>
+            <div className="mt-4">
+              <p className="m-0 mb-1 font-bold">Sounds and haptics</p>
+              <FeelSettings />
             </div>
           </Section>
           {authEnabled && <UsageSettings />}

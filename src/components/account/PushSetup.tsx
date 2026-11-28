@@ -112,7 +112,7 @@ function IOSGuide() {
       </p>
     );
   return (
-    <div className="rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-3 text-sm">
+    <div className="rounded-lg border border-callout-line bg-callout p-3 text-sm">
       <p className="m-0 font-bold">Add Veedu to your Home Screen</p>
       <p className="mt-1 mb-2 text-ink-2">iPhone only sends notifications to apps on the Home Screen (iOS 16.4 or later).</p>
       <ol className="m-0 list-decimal space-y-1 pl-5">

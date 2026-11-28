@@ -108,7 +108,7 @@ function RecipeList({ onOpen }: { onOpen: (id: string) => void }) {
         title="No recipes yet"
         hint="Import one from a recipe website or a pasted Instagram caption, or add your own. Then scale it and send the ingredients to the shopping list."
         example={
-          <div className="mt-1 flex gap-2.5 rounded-lg border border-[#e6d9c2] bg-white p-2">
+          <div className="mt-1 flex gap-2.5 rounded-lg border border-line bg-card p-2">
             <Thumb path={null} className="h-12 w-12 flex-none rounded-lg" />
             <div className="text-sm">
               <b>Kerala vegetable stew</b>
@@ -136,7 +136,7 @@ function RecipeList({ onOpen }: { onOpen: (id: string) => void }) {
               type="button"
               aria-pressed={tag === t}
               onClick={() => setTag(tag === t ? null : t)}
-              className={`min-h-8 rounded-full px-2.5 text-[11px] font-bold ${tag === t ? "bg-teak text-white" : "bg-[#f3ead9] text-teak"}`}
+              className={`min-h-8 rounded-full px-2.5 text-[11px] font-bold ${tag === t ? "bg-teak text-white" : "bg-sunken text-teak"}`}
             >
               {t}
             </button>
@@ -147,7 +147,7 @@ function RecipeList({ onOpen }: { onOpen: (id: string) => void }) {
         {shown.map((r) => {
           const a = avg(r.id);
           return (
-            <button key={r.id} type="button" onClick={() => onOpen(r.id)} className="flex w-full gap-2.5 rounded-lg border border-[#e6d9c2] bg-white p-2 text-left">
+            <button key={r.id} type="button" onClick={() => onOpen(r.id)} className="flex w-full gap-2.5 rounded-lg border border-line bg-card p-2 text-left">
               <Thumb path={r.photo_path} className="h-16 w-16 flex-none rounded-lg" />
               <span className="min-w-0 grow">
                 <b className="block truncate text-sm">{r.title}</b>
@@ -157,7 +157,7 @@ function RecipeList({ onOpen }: { onOpen: (id: string) => void }) {
                 {a !== null && <Stars value={a} label="Average rating" size="text-xs" />}
                 <span className="block">
                   {r.tags.slice(0, 3).map((t) => (
-                    <span key={t} className="mr-1 inline-block rounded-full bg-[#f3ead9] px-2 py-px text-[10px] font-bold text-teak">
+                    <span key={t} className="mr-1 inline-block rounded-full bg-sunken px-2 py-px text-[10px] font-bold text-teak">
                       {t}
                     </span>
                   ))}
@@ -266,7 +266,7 @@ function RecipeDetail({ id, onEdit, onDeleted }: { id: string; onEdit: () => voi
         placeholder="Your notes (e.g. less chilli next time)"
         rows={2}
         maxLength={1000}
-        className="mt-1 w-full rounded-lg border border-[#dccdb2] bg-white p-2 text-sm"
+        className="mt-1 w-full rounded-lg border border-line-strong bg-card p-2 text-sm"
         value={myNote ?? mine?.note ?? ""}
         onChange={(e) => setMyNote(e.target.value)}
         onBlur={() => myNote !== null && myNote !== (mine?.note ?? "") && rate(mine?.rating ?? null, myNote)}
@@ -276,18 +276,18 @@ function RecipeDetail({ id, onEdit, onDeleted }: { id: string; onEdit: () => voi
         <h4 className="m-0 text-[11.5px] font-bold tracking-[0.09em] text-ink-2 uppercase">Ingredients</h4>
         {base && (
           <span className="flex items-center gap-1 text-sm" role="group" aria-label="Servings">
-            <button type="button" aria-label="Fewer servings" className="h-9 w-9 rounded-full border border-[#e0d2b8] bg-white" onClick={() => setServings(Math.max(1, (now ?? 1) - 1))}>
+            <button type="button" aria-label="Fewer servings" className="h-9 w-9 rounded-full border border-line-strong bg-card" onClick={() => setServings(Math.max(1, (now ?? 1) - 1))}>
               −
             </button>
             <span className="min-w-[78px] text-center">serves {formatQty(now)}</span>
-            <button type="button" aria-label="More servings" className="h-9 w-9 rounded-full border border-[#e0d2b8] bg-white" onClick={() => setServings(Math.min(100, (now ?? 1) + 1))}>
+            <button type="button" aria-label="More servings" className="h-9 w-9 rounded-full border border-line-strong bg-card" onClick={() => setServings(Math.min(100, (now ?? 1) + 1))}>
               +
             </button>
           </span>
         )}
       </div>
       {ings.map((i) => (
-        <label key={i.id} className="flex min-h-10 items-center gap-2 border-b border-dashed border-[#e6d9c2] text-sm last:border-b-0">
+        <label key={i.id} className="flex min-h-10 items-center gap-2 border-b border-dashed border-line text-sm last:border-b-0">
           <input
             type="checkbox"
             checked={sel.has(i.id)}
@@ -318,7 +318,7 @@ function RecipeDetail({ id, onEdit, onDeleted }: { id: string; onEdit: () => voi
           <li key={s.id}>{s.body}</li>
         ))}
       </ol>
-      {r.notes && <p className="mt-3 rounded-lg bg-[#fffdf8] p-2 text-sm">{r.notes}</p>}
+      {r.notes && <p className="mt-3 rounded-lg bg-card-warm p-2 text-sm">{r.notes}</p>}
       <div className="mt-4 flex gap-4">
         <button type="button" className={linkBtn} onClick={onEdit}>
           Edit recipe
@@ -434,13 +434,13 @@ function RecipeEditor({
     setBusy(false);
   };
 
-  const flag = (v: number | undefined) => (v !== undefined && v < 0.7 ? "border-[#e9c46a] bg-[#fff8e1]" : "");
+  const flag = (v: number | undefined) => (v !== undefined && v < 0.7 ? "border-callout-line bg-callout" : "");
   const lowCount = ings.filter((i) => i.low && i.item).length;
 
   return (
     <form onSubmit={save} className="space-y-2 text-sm">
       {draft && (
-        <p className="m-0 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2 text-xs">
+        <p className="m-0 rounded-lg border border-callout-line bg-callout p-2 text-xs">
           {draft.method === "json-ld" ? "Read from the website's recipe data." : draft.method === "gemini" ? "Read by Gemini." : "Read with simple rules (no AI)."} Check it, then save.
           {lowCount > 0 && ` ${lowCount} ingredient${lowCount > 1 ? "s" : ""} highlighted need a look.`}
         </p>
@@ -476,7 +476,7 @@ function RecipeEditor({
       {ings.map((i, n) => (
         <div key={i.key} className="flex items-center gap-1">
           <input
-            className={`${smallSelect} w-14 ${i.low ? "border-[#e9c46a] bg-[#fff8e1]" : ""}`}
+            className={`${smallSelect} w-14 ${i.low ? "border-callout-line bg-callout" : ""}`}
             placeholder={i.low && !i.qty ? "?" : "Qty"}
             aria-label={`Amount for ingredient ${n + 1}`}
             value={i.qty}
@@ -484,7 +484,7 @@ function RecipeEditor({
           />
           <input className={`${smallSelect} w-16`} placeholder="Unit" aria-label={`Unit for ingredient ${n + 1}`} value={i.unit} maxLength={20} onChange={(e) => setIngs(upd(ings, n, { unit: e.target.value }))} />
           <input
-            className={`${inputCls} ${i.low ? "border-[#e9c46a] bg-[#fff8e1]" : ""}`}
+            className={`${inputCls} ${i.low ? "border-callout-line bg-callout" : ""}`}
             placeholder="Ingredient"
             aria-label={`Ingredient ${n + 1}`}
             value={i.item}
@@ -508,7 +508,7 @@ function RecipeEditor({
           <span className="mt-2.5 w-5 flex-none text-right text-xs text-ink-2">{n + 1}.</span>
           <textarea
             rows={2}
-            className={`min-h-11 w-full rounded-lg border border-[#dccdb2] bg-white p-2 ${flag(low?.steps)}`}
+            className={`min-h-11 w-full rounded-lg border border-line-strong bg-card p-2 ${flag(low?.steps)}`}
             aria-label={`Step ${n + 1}`}
             placeholder={n === steps.length - 1 ? "Add a step…" : ""}
             value={s}
@@ -520,7 +520,7 @@ function RecipeEditor({
           />
         </div>
       ))}
-      <textarea rows={2} className="w-full rounded-lg border border-[#dccdb2] bg-white p-2" placeholder="Notes" aria-label="Recipe notes" value={f.notes} maxLength={2000} onChange={(e) => setF({ ...f, notes: e.target.value })} />
+      <textarea rows={2} className="w-full rounded-lg border border-line-strong bg-card p-2" placeholder="Notes" aria-label="Recipe notes" value={f.notes} maxLength={2000} onChange={(e) => setF({ ...f, notes: e.target.value })} />
       <button type="submit" className={`${addBtn} w-full`} disabled={busy || !f.title.trim()}>
         {busy ? "Saving…" : id ? "Save changes" : "Save recipe"}
       </button>
@@ -599,7 +599,7 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
       </p>
       <textarea
         rows={4}
-        className="w-full rounded-lg border border-[#dccdb2] bg-white p-2"
+        className="w-full rounded-lg border border-line-strong bg-card p-2"
         placeholder="https://… or caption text (optional with screenshots)"
         aria-label="Link or caption to import"
         value={text}
@@ -607,7 +607,7 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
         onChange={(e) => setText(e.target.value)}
       />
       <div>
-        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-[#c9b796] bg-white px-3 font-bold text-teak">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border border-dashed border-line-firm bg-card px-3 font-bold text-teak">
           <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => (addShots(e.target.files), (e.target.value = ""))} disabled={shots.length >= 4} />
           📷 Add screenshots {shots.length ? `(${shots.length}/4)` : ""}
         </label>
@@ -616,7 +616,7 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
             {shots.map((s, i) => (
               <div key={s.url} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element -- local preview of a screenshot */}
-                <img src={s.url} alt={`Screenshot ${i + 1}`} className="h-24 w-16 rounded-md border border-[#e6d9c2] object-cover" />
+                <img src={s.url} alt={`Screenshot ${i + 1}`} className="h-24 w-16 rounded-md border border-line object-cover" />
                 <button
                   type="button"
                   aria-label={`Remove screenshot ${i + 1}`}
@@ -637,12 +637,12 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
         )}
       </div>
       {igOnly && (
-        <p className="m-0 rounded-lg border border-[#e9d4a4] bg-[#fff8e6] p-2 text-xs">
+        <p className="m-0 rounded-lg border border-callout-line bg-callout p-2 text-xs">
           Instagram links can&apos;t be read directly. Add screenshots of the post (or paste its caption); the link will be kept as the source.
         </p>
       )}
       <div className="flex gap-2">
-        <button type="button" className="min-h-11 rounded-lg border border-[#e0d2b8] bg-white px-3 text-sm font-bold" onClick={paste}>
+        <button type="button" className="min-h-11 rounded-lg border border-line-strong bg-card px-3 text-sm font-bold" onClick={paste}>
           Paste
         </button>
         <button type="button" className={`${addBtn.replace("flex-none", "")} flex-1`} disabled={(!trimmed && !shots.length) || igOnly || stage >= 0} onClick={run}>
@@ -652,7 +652,7 @@ function ImportBox({ initial, onDraft }: { initial?: string; onDraft: (d: Recipe
       {stage >= 0 && (
         <ol className="m-0 list-none p-0 text-xs" aria-live="polite">
           {(shots.length ? ["Uploading screenshots", "Reading them with Gemini", "Ready for review"] : STAGES).map((s, i) => (
-            <li key={s} className={i < stage ? "text-leaf" : i === stage ? "font-bold text-ink" : "text-[#b4a693]"}>
+            <li key={s} className={i < stage ? "text-leaf" : i === stage ? "font-bold text-ink" : "text-ink-3"}>
               {i < stage ? "✓" : i === stage ? "•" : "○"} {s}
             </li>
           ))}

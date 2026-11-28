@@ -36,7 +36,7 @@ export function InviteLink({ partnerHint = "your partner" }: { partnerHint?: str
         </button>
       ) : (
         <>
-          <input readOnly value={link} aria-label="Invite link" onFocus={(e) => e.currentTarget.select()} className="min-h-11 w-full rounded-lg border border-[#dccdb2] bg-white px-3 font-mono text-xs" />
+          <input readOnly value={link} aria-label="Invite link" onFocus={(e) => e.currentTarget.select()} className="min-h-11 w-full rounded-lg border border-line-strong bg-card px-3 font-mono text-xs" />
           <div className="mt-2 flex flex-wrap gap-2">
             <button type="button" className={btnPrimary} onClick={copy}>
               {copied ? "Copied ✓" : "Copy link"}

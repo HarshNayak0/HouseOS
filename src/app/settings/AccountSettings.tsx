@@ -151,7 +151,7 @@ function Household({ householdId, partner, bothColor }: { householdId: string; p
             Leave the household…
           </button>
         ) : (
-          <div role="alertdialog" aria-labelledby="leave-title" className="rounded-lg border border-[#e7b2a8] bg-[#fdf0ec] p-3">
+          <div role="alertdialog" aria-labelledby="leave-title" className="rounded-lg border border-alert-line bg-alert p-3">
             <p id="leave-title" className="m-0 text-sm">
               {partner
                 ? `Leave? ${partner.display_name} keeps the house and everything in it. You'd need a new invite to come back.`

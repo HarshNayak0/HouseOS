@@ -41,7 +41,7 @@ function MilestoneRow({ m, n }: { m: Milestone; n: ReturnType<typeof nextOccurre
   const [open, setOpen] = useState(false);
   const label = milestoneLabel(m.kind, n.years);
   return (
-    <div className="border-b border-dashed border-[#e6d9c2] last:border-b-0">
+    <div className="border-b border-dashed border-line last:border-b-0">
       <button type="button" className="flex min-h-11 w-full items-center gap-2 py-1.5 text-left text-sm" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
         <span className="grow">
           {m.title}
@@ -50,7 +50,7 @@ function MilestoneRow({ m, n }: { m: Milestone; n: ReturnType<typeof nextOccurre
             {label ? ` · ${label}` : ""}
           </span>
         </span>
-        <span className={`flex-none rounded-lg border px-2 py-1 text-xs font-bold ${n.daysAway <= 14 ? "border-[#e9d4a4] bg-[#fff8e6] text-[#7d5a1a]" : "border-[#e6d9c2] bg-white text-ink-2"}`}>
+        <span className={`flex-none rounded-lg border px-2 py-1 text-xs font-bold ${n.daysAway <= 14 ? "border-callout-line bg-callout text-callout-ink" : "border-line bg-card text-ink-2"}`}>
           {countdown(n.daysAway)}
         </span>
       </button>
@@ -71,7 +71,7 @@ function Gifts({ milestone }: { milestone: Milestone }) {
   if (forMe)
     return <p className="mt-0 mb-2 ml-2 text-xs text-ink-2">It&apos;s your birthday: any gift ideas {partner?.display_name ?? "your partner"} adds stay hidden from you 🤫</p>;
   return (
-    <div className="mb-2 ml-2 rounded-lg bg-[#fffdf8] p-2 text-sm">
+    <div className="mb-2 ml-2 rounded-lg bg-card-warm p-2 text-sm">
       <p className="m-0 mb-1 text-[11px] text-ink-2">Gift ideas (hidden from {partner?.display_name ?? "your partner"})</p>
       {ideas.map((g) => (
         <div key={g.id} className="flex min-h-11 items-center gap-2">
@@ -86,7 +86,7 @@ function Gifts({ milestone }: { milestone: Milestone }) {
           </span>
           <button
             type="button"
-            className="min-h-9 rounded-full border border-[#e0d2b8] bg-white px-2.5 text-[11px] font-bold capitalize"
+            className="min-h-9 rounded-full border border-line-strong bg-card px-2.5 text-[11px] font-bold capitalize"
             onClick={() => m.update(g.id, { status: STATUS[(STATUS.indexOf(g.status) + 1) % 3] })}
             aria-label={`Status: ${g.status}. Tap to change`}
           >
@@ -140,7 +140,7 @@ function SeptemberPlanner({ today }: { today: string }) {
       </p>
       {days.length === 0 && <p className="text-sm text-ink-2">Nothing booked yet.</p>}
       {days.map((d) => (
-        <div key={d} className="border-b border-dashed border-[#e6d9c2] py-1.5 last:border-b-0">
+        <div key={d} className="border-b border-dashed border-line py-1.5 last:border-b-0">
           <div className="text-xs font-bold text-ink-2">{fmtDay(d, { weekday: "short", month: "short", day: "numeric" })}</div>
           {inRange
             .filter((i) => i.day === d)

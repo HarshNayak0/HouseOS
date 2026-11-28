@@ -162,16 +162,37 @@ The house is ported from `reference/veedu-prototype.html` into `src/scene/`:
 | `materials/`, `builder.ts` | Material table and the `box` / `cyl` / `flat` helpers |
 | `house/`, `rooms/`, `props/`, `garden/` | Walls, roof, floors, furniture, palms, pond, well |
 | `indicators/` | Fridge badge, laundry heap, nilavilakku, boat lantern, closet bell, petti glow |
+| `props/homey.ts` | Nameplate, chappals, wall photos, jasmine vine, festival and season decorations (own RNG, built once, shown or hidden) |
 | `lighting/` | Sun, sky, day ↔ evening |
 | `camera/` | Views, camera flights, tap picking, labels (`controller.ts`) |
 | `merge.ts` | Merges static meshes per material to cut draw calls |
 | `HouseCanvas.tsx` | The React Three Fiber canvas, loaded lazily |
 
-Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `/closet`, `/backyard` open the house inside with that room's panel. `/settings` has the display choices (3D/2D, camera animations, evening mode) and everything account-related.
+Routes: `/` (house) and `/living`, `/kitchen`, `/bedroom`, `/office`, `/wash`, `/closet`, `/backyard` open the house inside with that room's panel. `/settings` has the display choices (3D/2D, camera animations, evening mode) and everything account-related, plus the house's nameplate and festivals, and per-phone look, sounds and haptics.
 
 **Roof opening:** both roof tiers are cut open above the nadumuttam. An inner roof slopes down into the courtyard, the opening has carved jaali sides like the gable (a timber light-well), and the mukhappu gable is a pediment on the front slope so the opening behind it stays clear. The code is in `house/roof.ts`: the roof faces are clipped around the opening, so there's no extra geometry.
 
-**Evening mode:** automatic by default. It turns on 20 minutes before sunset and off 15 minutes after sunrise in Toronto. Sunrise and sunset are computed on the device (`src/lib/sun.ts`, NOAA formulas, about ±2 minutes, no API). The **Evening/Daytime** button overrides it until the next sunset or sunrise. Settings → This device offers Automatic, Always daytime or Always evening.
+**Evening mode:** automatic by default. It turns on 20 minutes before sunset and off 15 minutes after sunrise in Toronto. Sunrise and sunset are computed on the device (`src/lib/sun.ts`, NOAA formulas, about ±2 minutes, no API). The **Evening/Daytime** button overrides it until the next sunset or sunrise.
+
+**Looks (panels follow the sun):** `src/lib/look.ts` sets `<html data-look>` to one of four looks; `globals.css` redefines the colour tokens for each:
+
+| Look | When | Feel |
+|---|---|---|
+| Morning | sunrise → 11 am | brighter paper-white, faint warm tint, crisper brass |
+| Day | 11 am → 40 min before sunset | the original cream |
+| Dusk | 40 min before → 30 min after sunset | amber paper, deeper brass, a warm glow along the top of the panel |
+| Night | after dusk → sunrise | dark teak panels, cream text, dimmer brass (`color-scheme: dark`) |
+
+The colours are registered CSS properties, so a change fades over about a minute when the sun moves it and in half a second after a tap. Settings → This device → **Look**: Follows the sun / Always day / Always night (the header button still overrides for a while). Panels use tokens (`bg-card`, `border-line`, `text-ink-3`, `bg-callout`…) instead of hex colours, so every look is consistent; the axe tests run in the day and night looks.
+
+**Feeling at home:**
+- **Nameplate** on the left gatepost: your two names (owner first), or your own wording (Settings → The house).
+- **Chappals** at the foot of the steps, one pair per person in their colour, on the days they've opened Veedu (`members.last_seen_on`, home-time date, written once a day).
+- **Three framed photos** on the living-room wall; choose them in the living room's *On the wall* (upload, or a date-memory photo). Tap a frame (in 3D or in the panel) for a full-screen viewer: pinch or double-tap to zoom, swipe for the next.
+- **Jasmine** up the verandah pillar right of the steps: grows with everything done together (chores, tasks, dates; 8 stages, never shrinks) and flowers with the last 7 days (14 = full bloom; otherwise green buds, never wilting). It shimmers when a chore or task is done.
+- **Festivals, seasons and your dates** (`src/lib/decor.ts`, unit-tested): Onam (pookalam, 10 days to Thiruvonam), Vishu (konna tree), Diwali (diyas on the verandah, steps, path and gateposts, 5 days), Christmas (Kerala star, Dec 1 – Jan 6), Halloween (pumpkins, Oct 24–31, among the autumn leaves), seasons (spring blossoms, summer fireflies at night, autumn leaves, winter snow; none in the tropics, flipped in the south), anniversaries ±1 day (marigold garlands on the gate and pillars, boat lantern lit) and birthdays (garlands and balloons at the gate). Each can be turned off in Settings → The house. Moving festival dates are listed in `decor.ts` (Onam to 2028, Diwali and Vishu to 2030); add later years there.
+
+**Small moments, sounds and haptics** (`src/lib/feel.ts`): a ticked-off shopping item drops into the basket (which bounces), tasks get an ink-stroke tick, a new note lands with a bounce, a finished chore rings a brass bell, and the boat lantern flickers on when it lights. Reduce motion turns these into plain fades. **Sounds** (off by default, per phone) are made with the Web Audio API — no audio files: bell, tick, rustle; and while the house is open, birds until 10 am, crickets after dark, rain when it's raining at home (Open-Meteo current weather). **Haptics** (on by default, per phone): `navigator.vibrate` on Android; on iPhone (iOS 18+) a hidden native switch gives a light tap.
 
 **2D floor plan:** used automatically when the device has no WebGL or prefers reduced motion, offered when the 3D view runs below ~28 fps, and selectable in Settings.
 

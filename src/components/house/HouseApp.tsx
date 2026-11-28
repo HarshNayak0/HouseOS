@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { HouseController } from "@/scene/camera/controller";
 import { ROOM_IDS, isRoomId, roomPath, type RoomId } from "@/scene/config";
 import { useHousehold, useRoomLabels } from "@/lib/household";
@@ -11,6 +11,7 @@ import { authEnabled } from "@/lib/supabase/config";
 import { useIndicatorState } from "@/lib/lists/indicators";
 import { useNow } from "@/lib/lists/useNow";
 import { isEvening } from "@/lib/sun";
+import { lookOverride } from "@/lib/look";
 import {
   chooseView,
   effectiveReducedMotion,
@@ -23,6 +24,9 @@ import {
   type EveningPref,
 } from "@/lib/view-pref";
 import { FloorPlan } from "./FloorPlan";
+import { PhotoViewer } from "./PhotoViewer";
+import { AmbienceController } from "./Ambience";
+import { useHomeyState } from "@/lib/homey";
 import { QuickAdd } from "./QuickAdd";
 import { RoomPanel } from "./RoomPanel";
 
@@ -90,10 +94,44 @@ export function HouseApp() {
     goRoom(id);
   };
 
+  // Nameplate, chappals, wall photos, festivals and the jasmine.
+  const homey = useHomeyState();
+  const homeyKey = JSON.stringify(homey);
+  useEffect(() => {
+    if (ctrl && homey) ctrl.setHomey(homey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- re-run only when the values change
+  }, [ctrl, homeyKey]);
+  // a chore or task done: a shimmer through the jasmine
+  useEffect(() => {
+    if (!ctrl) return;
+    const on = (e: Event) => {
+      const k = (e as CustomEvent).detail;
+      if (k === "chore" || k === "task") ctrl.model.homey.shimmer();
+    };
+    window.addEventListener("veedu:moment", on);
+    return () => window.removeEventListener("veedu:moment", on);
+  }, [ctrl]);
+  const shownPhotos = (homey?.photos ?? []).filter((u): u is string => !!u);
+  const [viewing, setViewing] = useState<number | null>(null);
+  const photosRef = useRef(homey?.photos ?? []);
+  useEffect(() => {
+    photosRef.current = homey?.photos ?? [];
+  });
+
   // Controller callbacks
   useEffect(() => {
     if (!ctrl) return;
-    ctrl.setHandlers({ onTapRoom: goRoom, onTapOutside: () => ctrl.goInside(), onModeChange: setMode });
+    ctrl.setHandlers({
+      onTapRoom: goRoom,
+      onTapOutside: () => ctrl.goInside(),
+      onModeChange: setMode,
+      // a framed photo: open it (an empty frame opens the living room, where photos are chosen)
+      onTapPhoto: (i) => {
+        const list = photosRef.current;
+        if (!list[i]) return goRoom("living");
+        setViewing(list.slice(0, i).filter(Boolean).length);
+      },
+    });
   }, [ctrl, goRoom]);
 
   // In-scene indicators follow the real lists (fridge badge, laundry heap, nilavilakku).
@@ -114,6 +152,12 @@ export function HouseApp() {
   useEffect(() => {
     ctrl?.setEvening(evening);
   }, [ctrl, evening]);
+  // the panels' look follows the header button too (and lets go when the override lapses)
+  const lookOv = eveningOverride && (eveningPref !== "auto" || eveningOverride.auto === autoEvening) ? eveningOverride.value : null;
+  useEffect(() => {
+    lookOverride.set(lookOv);
+  }, [lookOv]);
+  useEffect(() => () => lookOverride.set(null), []);
 
   // Re-aim the camera when the window is resized or the phone rotates.
   useEffect(() => {
@@ -159,7 +203,7 @@ export function HouseApp() {
   const hint = !ready || room ? null : inside ? "Tap a room to open it" : "Drag to look around · tap the house to step inside";
 
   return (
-    <div className="fixed inset-0 overflow-hidden bg-[#efe6d6]">
+    <div className="fixed inset-0 overflow-hidden bg-backdrop">
       {view === "3d" && !loadError && (
         <HouseCanvas
           initialRoom={initialRoom}
@@ -193,7 +237,7 @@ export function HouseApp() {
                 ref={(el) => ctrl.registerLabel(id, el)}
                 onClick={onRoomLink(id)}
                 style={{ opacity: 0 }}
-                className="absolute top-0 left-0 cursor-pointer rounded-full border border-brass bg-[rgba(251,248,242,0.94)] px-[11px] pt-1 pb-[3px] text-center text-[12.5px] leading-[1.15] font-bold whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(59,36,24,0.15)] transition-opacity duration-300 hover:bg-[#fff6e2]"
+                className="absolute top-0 left-0 cursor-pointer rounded-full border border-brass bg-[rgba(251,248,242,0.94)] px-[11px] pt-1 pb-[3px] text-center text-[12.5px] leading-[1.15] font-bold whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(59,36,24,0.15)] transition-opacity duration-300 hover:bg-card-warm"
               >
                 {l.name}
                 {l.ml && (
@@ -247,7 +291,7 @@ export function HouseApp() {
           <Link
             href="/settings"
             aria-label="Settings"
-            className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-[#d8c6a6] bg-paper text-ink shadow-[0_2px_8px_rgba(59,36,24,0.1)]"
+            className="flex h-[38px] w-[38px] items-center justify-center rounded-full border border-line-strong bg-paper text-ink shadow-[0_2px_8px_rgba(59,36,24,0.1)]"
           >
             <GearIcon />
           </Link>
@@ -279,7 +323,9 @@ export function HouseApp() {
         </div>
       )}
 
+      <AmbienceController />
       <RoomPanel room={room} onClose={closePanel} labels={labels} />
+      {viewing !== null && shownPhotos.length > 0 && <PhotoViewer urls={shownPhotos} start={viewing} onClose={() => setViewing(null)} />}
       {household.data?.me && !room && <QuickAdd />}
 
       {view !== "2d" && !ctrl && !loadError && <LoadingScreen {...progress} />}
@@ -290,7 +336,7 @@ export function HouseApp() {
 function LoadingScreen({ done, total, label }: { done: number; total: number; label: string }) {
   const pct = Math.round((done / total) * 100);
   return (
-    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-[#efe6d6] px-6">
+    <div className="fixed inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-backdrop px-6">
       <p className="m-0 font-serif text-xl text-teak">Building the tharavad…</p>
       <div
         role="progressbar"
@@ -298,7 +344,7 @@ function LoadingScreen({ done, total, label }: { done: number; total: number; la
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={pct}
-        className="h-2 w-64 max-w-full overflow-hidden rounded-full bg-[#e2d4bb]"
+        className="h-2 w-64 max-w-full overflow-hidden rounded-full bg-track"
       >
         <div className="h-full bg-brass transition-[width] duration-200" style={{ width: `${pct}%` }} />
       </div>
@@ -319,7 +365,7 @@ function HeaderButton({
       type="button"
       {...rest}
       className={`min-h-[38px] cursor-pointer rounded-full border px-[13px] py-2 text-[13.5px] font-bold shadow-[0_2px_8px_rgba(59,36,24,0.1)] active:translate-y-px disabled:opacity-60 ${
-        primary ? "border-red-oxide bg-red-oxide text-white" : "border-[#d8c6a6] bg-paper text-ink"
+        primary ? "border-red-oxide bg-red-oxide text-white" : "border-line-strong bg-paper text-ink"
       }`}
     >
       {children}

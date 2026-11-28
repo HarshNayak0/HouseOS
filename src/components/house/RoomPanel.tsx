@@ -80,7 +80,7 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
       data-open={!!room}
       data-expanded={expanded}
       style={dragH !== null ? { height: dragH, transition: "none" } : undefined}
-      className="fixed z-20 flex flex-col overflow-hidden rounded-[10px] border border-brass bg-paper shadow-[0_12px_40px_rgba(59,36,24,0.28)] transition-[transform,height] duration-[220ms] ease-[cubic-bezier(.2,.8,.2,1)]
+      className="look-panel fixed z-20 flex flex-col overflow-hidden rounded-[10px] border border-brass bg-paper shadow-[0_12px_40px_rgba(59,36,24,0.28)] transition-[transform,height] duration-[220ms] ease-[cubic-bezier(.2,.8,.2,1)]
         inset-x-2 bottom-2 h-[58dvh] translate-y-[112%] data-[open=true]:translate-y-0 data-[expanded=true]:h-[calc(100dvh-16px)]
         min-[721px]:inset-x-auto min-[721px]:right-4 min-[721px]:top-[74px] min-[721px]:bottom-4 min-[721px]:h-auto min-[721px]:w-[370px] min-[721px]:translate-y-0 min-[721px]:translate-x-[430px] min-[721px]:data-[open=true]:translate-x-0"
     >
@@ -94,7 +94,7 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
           onClick={() => !justDragged.current && setExpanded((v) => !v)}
           className="flex h-6 w-full cursor-grab items-center justify-center min-[721px]:hidden"
         >
-          <span className="block h-[5px] w-10 rounded-full bg-[#d8c6a6]" aria-hidden="true" />
+          <span className="block h-[5px] w-10 rounded-full bg-track" aria-hidden="true" />
         </button>
         {label && (
           <div className="flex items-start justify-between px-4 pt-1 pb-1 min-[721px]:pt-3.5">
@@ -109,7 +109,7 @@ export function RoomPanel({ room, onClose, labels }: { room: RoomId | null; onCl
               type="button"
               onClick={onClose}
               aria-label="Close panel"
-              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-[#e0d2b8] bg-white text-lg text-ink-2"
+              className="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-line-strong bg-card text-lg text-ink-2"
             >
               ✕
             </button>

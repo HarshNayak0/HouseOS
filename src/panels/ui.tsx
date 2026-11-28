@@ -26,6 +26,46 @@ export function Check({ checked, onChange, label }: { checked: boolean; onChange
   );
 }
 
+/** A tick that draws itself in like an ink stroke (tasks). */
+export function InkCheck({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  const [drawn, setDrawn] = useState(false);
+  return (
+    <label className="-m-2 flex h-11 w-11 flex-none cursor-pointer items-center justify-center">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => {
+          setDrawn(e.target.checked);
+          onChange(e.target.checked);
+        }}
+        aria-label={label}
+        className="peer sr-only"
+      />
+      <span
+        aria-hidden="true"
+        className={`flex h-[20px] w-[20px] items-center justify-center rounded-[5px] border-2 peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass ${checked ? "border-red-oxide bg-red-oxide" : "border-line-firm bg-card"}`}
+      >
+        {checked && (
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <path d="M2.5 7.4 L5.6 10.4 L11.6 3.6" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={drawn ? "moment-ink" : ""} />
+          </svg>
+        )}
+      </span>
+    </label>
+  );
+}
+
+/** A small woven basket (the shopping list's "in the basket"). */
+export function Basket({ bounce }: { bounce: number }) {
+  return (
+    <svg key={bounce} width="22" height="18" viewBox="0 0 22 18" aria-hidden="true" className={bounce ? "moment-bounce" : ""} style={{ transformOrigin: "50% 100%" }}>
+      <path d="M5 7 Q11 -1 17 7" fill="none" stroke="var(--color-teak)" strokeWidth="1.6" />
+      <path d="M2 7 H20 L17.5 17 H4.5 Z" fill="var(--color-brass)" />
+      <path d="M3 10 H19 M3.8 13 H18.2 M7 7 L8 17 M11 7 V17 M15 7 L14 17" stroke="var(--color-teak)" strokeWidth="0.9" opacity="0.7" />
+    </svg>
+  );
+}
+
 /** Members by id plus helpers for "Me / Prerna / Both". */
 export function usePeople() {
   const { data } = useHousehold();
@@ -62,7 +102,7 @@ export function PartnerHint({ id }: { id: string }) {
 
 export function Row({ done, children, className = "" }: { done?: boolean; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`flex min-h-11 items-center gap-2.5 border-b border-dashed border-[#e6d9c2] py-1.5 text-sm last:border-b-0 ${done ? "[&_.grow]:text-[#7a6b5d] [&_.grow]:line-through" : ""} ${className}`}>
+    <div className={`flex min-h-11 items-center gap-2.5 border-b border-dashed border-line py-1.5 text-sm last:border-b-0 ${done ? "[&_.grow]:text-ink-3 [&_.grow]:line-through" : ""} ${className}`}>
       {children}
     </div>
   );
@@ -70,7 +110,7 @@ export function Row({ done, children, className = "" }: { done?: boolean; childr
 
 export function IconButton({ label, onClick, children }: { label: string; onClick: () => void; children: React.ReactNode }) {
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className="-m-1.5 flex h-11 w-11 flex-none items-center justify-center rounded-full text-ink-2 hover:bg-[#f3ead9]">
+    <button type="button" aria-label={label} title={label} onClick={onClick} className="-m-1.5 flex h-11 w-11 flex-none items-center justify-center rounded-full text-ink-2 hover:bg-sunken">
       {children}
     </button>
   );
@@ -84,7 +124,7 @@ export const TrashIcon = () => (
 
 export function EmptyState({ title, hint, example }: { title: string; hint: string; example?: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-dashed border-[#e0d2b8] bg-[#fffdf8] p-3 text-sm">
+    <div className="rounded-lg border border-dashed border-line-strong bg-card-warm p-3 text-sm">
       <p className="m-0 font-bold">{title}</p>
       <p className="mt-1 mb-0 text-ink-2">{hint}</p>
       {example && (
@@ -97,8 +137,8 @@ export function EmptyState({ title, hint, example }: { title: string; hint: stri
   );
 }
 
-export const inputCls = "min-h-11 min-w-0 flex-1 rounded-lg border border-[#dccdb2] bg-white px-2.5 text-[15px]";
-export const smallSelect = "min-h-11 rounded-lg border border-[#dccdb2] bg-white px-2 text-sm";
+export const inputCls = "min-h-11 min-w-0 flex-1 rounded-lg border border-line-strong bg-card px-2.5 text-[15px]";
+export const smallSelect = "min-h-11 rounded-lg border border-line-strong bg-card px-2 text-sm";
 export const addBtn = "min-h-11 flex-none rounded-lg bg-red-oxide px-3 text-sm font-bold text-white disabled:opacity-50";
 export const linkBtn = "min-h-11 text-xs font-bold text-teak underline";
 
@@ -195,7 +235,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label }: { tabs:
           role="tab"
           aria-selected={value === t}
           onClick={() => onChange(t)}
-          className={`min-h-9 flex-1 rounded-full text-xs font-bold ${value === t ? "bg-teak text-white" : "border border-[#e6d9c2] bg-white"}`}
+          className={`min-h-9 flex-1 rounded-full text-xs font-bold ${value === t ? "bg-teak text-white" : "border border-line bg-card"}`}
         >
           {text}
         </button>

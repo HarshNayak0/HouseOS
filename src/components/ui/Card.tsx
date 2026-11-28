@@ -30,6 +30,6 @@ export function Brand() {
 export const btnPrimary =
   "inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-red-oxide px-5 text-sm font-bold text-white shadow-sm active:translate-y-px disabled:opacity-60";
 export const btnSecondary =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-[#d8c6a6] bg-paper px-5 text-sm font-bold text-ink active:translate-y-px disabled:opacity-60";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border border-line-strong bg-paper px-5 text-sm font-bold text-ink active:translate-y-px disabled:opacity-60";
 export const input =
-  "min-h-11 w-full rounded-lg border border-[#dccdb2] bg-white px-3 text-[15px] text-ink";
+  "min-h-11 w-full rounded-lg border border-line-strong bg-card px-3 text-[15px] text-ink";

@@ -36,6 +36,8 @@ export class HouseController {
   private proj = new THREE.Vector3();
   private lastInteraction = 0;
   private ind: IndicatorState = EMPTY_INDICATORS;
+  private lanternWas: boolean | null = null;
+  private lanternLitAt = -100;
   private labelEls: Partial<Record<RoomId, HTMLElement>> = {};
   private labelAnchors = Object.fromEntries(
     ROOM_IDS.map((id) => {
@@ -47,6 +49,8 @@ export class HouseController {
   /** Called when the user taps the house from outside, or taps a room. */
   onTapRoom?: (id: RoomId) => void;
   onTapOutside?: () => void;
+  /** A framed photo on the living-room wall was tapped (0–2). */
+  onTapPhoto?: (i: number) => void;
   /** Lets the page hide its hint etc. */
   onModeChange?: (mode: Mode) => void;
 
@@ -62,7 +66,7 @@ export class HouseController {
     applyEvening(0, false, model.lighting, model.lamps, renderer, scene, model.T);
   }
 
-  setHandlers(h: { onTapRoom?: (id: RoomId) => void; onTapOutside?: () => void; onModeChange?: (mode: Mode) => void }) {
+  setHandlers(h: { onTapRoom?: (id: RoomId) => void; onTapOutside?: () => void; onTapPhoto?: (i: number) => void; onModeChange?: (mode: Mode) => void }) {
     Object.assign(this, h);
   }
 
@@ -239,7 +243,16 @@ export class HouseController {
     heap.scale.set(0.5 + open * 0.1, 0.25 + open * 0.12, 0.5 + open * 0.1);
     heap.visible = open > 0;
     indicators.bell.visible = s.renewalSoon;
-    (this.model.lantern.material as THREE.MeshBasicMaterial).color.copy(s.tripSoon ? LANTERN_ON : LANTERN_OFF);
+  }
+
+  /** Nameplate, chappals, wall photos, festivals and the jasmine (see src/lib/homey.ts). */
+  setHomey(h: import("@/lib/homey").HomeyState) {
+    const hm = this.model.homey;
+    hm.setNameplate(h.nameplate);
+    hm.setChappals(h.chappals);
+    h.photos.forEach((u, i) => hm.setPhoto(i, u));
+    hm.setDecor(h.decor);
+    hm.setJasmine(h.jasmine.growth, h.jasmine.bloom);
   }
 
   /* ---------- picking ---------- */
@@ -256,6 +269,14 @@ export class HouseController {
     this.markInteraction();
     if (this.mode === "outside") {
       this.onTapOutside?.();
+      return;
+    }
+    // a framed photo in the living room opens it
+    this.pick(clientX, clientY); // aims the ray
+    const photo = this.ray.intersectObjects(this.model.homey.frames, false)[0];
+    const floor = this.ray.intersectObjects(this.model.pickables, false)[0];
+    if (photo && (!floor || photo.distance <= floor.distance) && this.onTapPhoto) {
+      this.onTapPhoto(photo.object.userData.photo as number);
       return;
     }
     const id = this.pick(clientX, clientY);
@@ -325,12 +346,22 @@ export class HouseController {
     const roofOpacity = m.roof.visible ? (m.roofMats[0].opacity ?? 1) : 0;
     for (const i of [1, 2]) if (m.lamps[i]) m.lamps[i].intensity *= roofOpacity;
     // boat lantern: only lit when a trip is coming up
+    // (and on your anniversaries, with the garlands)
+    const lanternLit = this.ind.tripSoon || m.homey.decor.garlands;
+    // when it lights, the lantern flickers on and the boat gives a little bob
+    if (lanternLit && this.lanternWas === false) this.lanternLitAt = t;
+    this.lanternWas = lanternLit;
+    const lighting = anim && t - this.lanternLitAt < 2.2 ? (t - this.lanternLitAt) / 2.2 : 1;
+    const flicker = lighting < 1 ? (Math.sin(t * 40) > 0.2 - lighting ? 1 : 0.15) * lighting : 1;
+    (m.lantern.material as THREE.MeshBasicMaterial).color.copy(lanternLit ? LANTERN_OFF.clone().lerp(LANTERN_ON, flicker) : LANTERN_OFF);
     const boatLamp = m.lamps[3];
-    if (boatLamp && !this.ind.tripSoon) boatLamp.intensity = 0;
-    if (this.ind.tripSoon && anim) m.lantern.scale.setScalar(1 + 0.15 * Math.sin(t * 3));
+    if (boatLamp && !lanternLit) boatLamp.intensity = 0;
+    else if (boatLamp) boatLamp.intensity *= flicker;
+    if (lanternLit && anim) m.lantern.scale.setScalar(1 + 0.15 * Math.sin(t * 3));
     if (anim) {
-      m.boat.position.y = 0.16 + 0.025 * Math.sin(t * 1.3);
-      m.boat.rotation.z = 0.02 * Math.sin(t * 1.1);
+      const bob = lighting < 1 ? 1 + 3 * Math.sin(lighting * Math.PI) : 1;
+      m.boat.position.y = 0.16 + 0.025 * bob * Math.sin(t * 1.3 * (lighting < 1 ? 2.2 : 1));
+      m.boat.rotation.z = 0.02 * bob * Math.sin(t * 1.1);
     }
     // closet bell sways gently
     if (m.indicators.bell.visible && anim) m.indicators.bell.rotation.z = 0.12 * Math.sin(t * 2.2);
@@ -349,6 +380,7 @@ export class HouseController {
       this.controls.autoRotateSpeed = 0.35;
     } else if (this.controls.autoRotate) this.controls.autoRotate = false;
 
+    m.homey.update(t, this.eveK, anim, m.walls.scale.y);
     this.updateLabels();
   }
 }

@@ -19,11 +19,11 @@ import type { VaultItemRow } from "@/lib/vault";
 import { Sec, WhoChip, linkBtn, usePeople } from "./ui";
 
 const TONE: Record<UrgentTone, string> = {
-  overdue: "border-[#e7b2a8] bg-[#fdf0ec] text-urgent",
-  soon: "border-[#e6d9c2] bg-white text-ink",
-  milestone: "border-[#e9d4a4] bg-[#fff8e6] text-[#7d5a1a]",
-  trip: "border-[#c9dcc0] bg-[#f1f7ec] text-leaf",
-  renewal: "border-[#e9d4a4] bg-[#fff8e6] text-[#7d5a1a]",
+  overdue: "border-alert-line bg-alert text-urgent",
+  soon: "border-line bg-card text-ink",
+  milestone: "border-callout-line bg-callout text-callout-ink",
+  trip: "border-ok-line bg-ok text-leaf",
+  renewal: "border-callout-line bg-callout text-callout-ink",
 };
 
 const dayLabel = formatDay;
@@ -80,7 +80,7 @@ export function Dashboard() {
   return (
     <>
       {warnings.length > 0 && (
-        <div role="alert" className="mb-3 rounded-lg border border-[#e7b2a8] bg-[#fdf0ec] p-2.5 text-sm text-urgent">
+        <div role="alert" className="mb-3 rounded-lg border border-alert-line bg-alert p-2.5 text-sm text-urgent">
           ⚠️ Veedu is using {warnings.map((w) => `${Math.round(w.share * 100)}% of its free ${w.what}`).join(" and ")}.{" "}
           <Link href="/settings" className="font-bold underline">
             See usage
@@ -124,7 +124,7 @@ export function Dashboard() {
                 type="button"
                 aria-pressed={sel}
                 onClick={() => setPicked(d)}
-                className={`flex min-h-14 flex-col items-center rounded-lg border px-0.5 py-1.5 text-[11px] text-ink-2 ${d === today ? "border-red-oxide bg-[#fdf3ef]" : sel ? "border-teak bg-[#f3ead9]" : "border-[#e6d9c2] bg-white"}`}
+                className={`flex min-h-14 flex-col items-center rounded-lg border px-0.5 py-1.5 text-[11px] text-ink-2 ${d === today ? "border-red-oxide bg-alert" : sel ? "border-teak bg-sunken" : "border-line bg-card"}`}
               >
                 <span aria-hidden="true">{dayLabel(d, { weekday: "short" })}</span>
                 <b className="text-[15px] text-ink" aria-hidden="true">
@@ -175,7 +175,7 @@ function DayItems({ list, empty }: { list: CalItem[]; empty: string }) {
   return (
     <>
       {list.map((i) => (
-        <div key={i.key} className="flex min-h-10 items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-sm last:border-b-0">
+        <div key={i.key} className="flex min-h-10 items-center gap-2 border-b border-dashed border-line py-1 text-sm last:border-b-0">
           <span className="h-7 w-1 flex-none rounded-full" style={{ background: i.color }} aria-hidden="true" />
           <span className="min-w-0 grow">
             {i.kind === "milestone" && "🎉 "}
@@ -194,7 +194,7 @@ function DayItems({ list, empty }: { list: CalItem[]; empty: string }) {
 
 function PendingRow({ title, sub, overdue, who, onOpen }: { title: string; sub: string; overdue: boolean; who: string | null; onOpen: () => void }) {
   return (
-    <button type="button" onClick={onOpen} className="flex min-h-11 w-full items-center gap-2 border-b border-dashed border-[#e6d9c2] py-1 text-left text-sm last:border-b-0">
+    <button type="button" onClick={onOpen} className="flex min-h-11 w-full items-center gap-2 border-b border-dashed border-line py-1 text-left text-sm last:border-b-0">
       <span className="grow">
         {title}
         <span className={`block text-xs ${overdue ? "font-bold text-urgent" : "text-ink-2"}`}>{sub}</span>
@@ -214,7 +214,7 @@ export function TogetherCounter() {
   if (days < 0) return null;
   return (
     <Sec title="Together">
-      <div className="rounded-lg border border-[#e6d9c2] bg-white p-3 text-center">
+      <div className="rounded-lg border border-line bg-card p-3 text-center">
         <div className="font-serif text-[28px] font-semibold">{days.toLocaleString("en-CA")}</div>
         <div className="text-[12.5px] text-ink-2">days together · since {dayLabel(since, { month: "short", day: "numeric", year: "numeric" })}</div>
       </div>
@@ -248,7 +248,7 @@ export function ActivityFeed() {
   return (
     <Sec title="Recent activity">
       {rows.map((a) => (
-        <p key={a.id} className="m-0 border-b border-dashed border-[#e6d9c2] py-1.5 text-sm last:border-b-0">
+        <p key={a.id} className="m-0 border-b border-dashed border-line py-1.5 text-sm last:border-b-0">
           <b>{byId(a.actor_id)?.display_name ?? "Someone"}</b> {a.summary}
           <span className="text-xs text-ink-2"> · {ago(a.created_at)}</span>
         </p>

@@ -28,3 +28,6 @@ export const pushSubscriptionSchema = z.object({
 
 /** Quiet hours (shared with the reminder function). */
 export { inQuietHours } from "../../supabase/functions/_shared/rules";
+
+/** The brass nameplate on the gate (empty = your two names). */
+export const nameplateSchema = z.string().trim().max(32, "32 characters at most");

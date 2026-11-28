@@ -11,6 +11,7 @@ import { DEFAULT_LABELS, ROOM_IDS, type RoomId, type RoomLabel } from "@/scene/c
 import type { PersonColor } from "./colors";
 import { supabaseBrowser } from "./supabase/browser";
 import { authEnabled } from "./supabase/config";
+import { torontoDayKey } from "./time";
 
 export interface Member {
   id: string;
@@ -19,12 +20,20 @@ export interface Member {
   display_name: string;
   role: "owner" | "partner";
   color: PersonColor;
+  /** The day (home time) they last opened Veedu: their chappals sit at the door that day. */
+  last_seen_on?: string | null;
 }
 
 export interface HouseholdSettings {
   household_id: string;
   room_labels: Partial<Record<RoomId, { name: string; ml: string }>>;
   both_color: PersonColor;
+  /** Brass nameplate on the gate (null = your two names). */
+  nameplate?: string | null;
+  /** The three frames in the living room. */
+  wall_photos?: ({ path: string } | null)[];
+  /** Festivals and seasons turned off (see src/lib/decor.ts). */
+  decor_off?: string[];
 }
 
 export interface HouseholdState {
@@ -47,12 +56,21 @@ async function loadHousehold(): Promise<HouseholdState> {
     data: { user },
   } = await sb.auth.getUser();
   if (!user) return empty;
-  const { data: members, error } = await sb.from("members").select("id, household_id, user_id, display_name, role, color").is("deleted_at", null);
+  // (falls back to the older columns if the newest migration hasn't been run yet)
+  const cols = "id, household_id, user_id, display_name, role, color";
+  let { data: members, error } = await sb.from("members").select(`${cols}, last_seen_on`).is("deleted_at", null);
+  // (last_seen_on:color is only a stand-in of the right shape: never a date, so no chappals)
+  if (error?.code === "42703") ({ data: members, error } = await sb.from("members").select(`${cols}, last_seen_on:color`).is("deleted_at", null));
   if (error) throw error;
   const me = (members as Member[]).find((m) => m.user_id === user.id) ?? null;
   if (!me) return { ...empty, user };
   const [{ data: settings }, { data: household }] = await Promise.all([
-    sb.from("household_settings").select("household_id, room_labels, both_color").eq("household_id", me.household_id).maybeSingle(),
+    sb
+      .from("household_settings")
+      .select("household_id, room_labels, both_color, nameplate, wall_photos, decor_off")
+      .eq("household_id", me.household_id)
+      .maybeSingle()
+      .then((r) => (r.error?.code === "42703" ? sb.from("household_settings").select("household_id, room_labels, both_color").eq("household_id", me.household_id).maybeSingle() : r)),
     sb.from("households").select("name, together_since").eq("id", me.household_id).maybeSingle(),
   ]);
   return {
@@ -106,4 +124,28 @@ export function useRoomLabels(): Record<RoomId, RoomLabel> {
   return Object.fromEntries(
     ROOM_IDS.map((id) => [id, { ...DEFAULT_LABELS[id], ...(over[id] ?? {}) }]),
   ) as Record<RoomId, RoomLabel>;
+}
+
+/** Note that I opened Veedu today (once a day), so my chappals appear at the door on both phones. */
+export function useMarkSeen() {
+  const qc = useQueryClient();
+  const { data } = useHousehold();
+  const me = data?.me;
+  useEffect(() => {
+    const sb = supabaseBrowser();
+    if (!sb || !me) return;
+    const check = () => {
+      const today = torontoDayKey(new Date());
+      if (me.last_seen_on === today || document.visibilityState !== "visible") return;
+      sb.from("members")
+        .update({ last_seen_on: today })
+        .eq("id", me.id)
+        .then(({ error }) => {
+          if (!error) qc.invalidateQueries({ queryKey: householdKey });
+        });
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    return () => document.removeEventListener("visibilitychange", check);
+  }, [me, qc]);
 }

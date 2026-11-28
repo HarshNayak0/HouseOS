@@ -92,7 +92,7 @@ export function QuickAdd() {
           <div className="flex gap-1.5">
             <input
               autoFocus
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-[#dccdb2] bg-white px-2.5 text-[15px]"
+              className="min-h-11 min-w-0 flex-1 rounded-lg border border-line-strong bg-card px-2.5 text-[15px]"
               placeholder={current.placeholder}
               aria-label={current.title}
               maxLength={current.kind === "note" ? 500 : 120}

@@ -2,10 +2,11 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { useHouseholdRealtime } from "@/lib/household";
+import { useHouseholdRealtime, useMarkSeen } from "@/lib/household";
 import { useListsRealtime } from "@/lib/lists/rows";
 import { useSyncOnOpen } from "@/lib/calendar";
 import { Toaster } from "@/panels/ui";
+import { LookController } from "./LookController";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [client] = useState(() => new QueryClient({ defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: true } } }));
@@ -18,6 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={client}>
       <Realtime />
+      <LookController />
       {children}
       <Toaster />
     </QueryClientProvider>
@@ -27,6 +29,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 /** The app's live-updates subscriptions (each opened exactly once). */
 function Realtime() {
   useHouseholdRealtime();
+  useMarkSeen();
   useListsRealtime();
   useSyncOnOpen();
   return null;

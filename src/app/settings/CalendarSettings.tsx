@@ -131,7 +131,7 @@ export function MilestoneSettings() {
     <Section title="Milestones">
       <p className="mt-0 mb-2 text-xs text-ink-2">Every year. Reminders 14, 7 and 1 days before; birthday reminders go to the other person only.</p>
       {list.map((ms) => (
-        <div key={ms.id} className="flex flex-wrap items-center gap-1.5 border-b border-dashed border-[#e6d9c2] py-1.5 last:border-b-0">
+        <div key={ms.id} className="flex flex-wrap items-center gap-1.5 border-b border-dashed border-line py-1.5 last:border-b-0">
           <input className={`${input} min-w-0 flex-1`} aria-label="Milestone name" defaultValue={ms.title} maxLength={80} onBlur={(e) => e.target.value.trim() && e.target.value !== ms.title && m.update(ms.id, { title: e.target.value.trim() })} />
           <input type="date" className={`${input} w-auto`} aria-label={`${ms.title} date`} defaultValue={ms.base_date} onBlur={(e) => e.target.value && e.target.value !== ms.base_date && m.update(ms.id, { base_date: e.target.value })} />
           {ms.kind === "birthday" && (

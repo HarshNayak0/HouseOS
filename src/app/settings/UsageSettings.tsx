@@ -17,7 +17,7 @@ function Meter({ label, used, limit }: { label: string; used: number; limit: num
         </span>
       </div>
       <div
-        className="mt-1 h-2 overflow-hidden rounded-full bg-[#efe4cf]"
+        className="mt-1 h-2 overflow-hidden rounded-full bg-track"
         role="meter"
         aria-label={`${label} used`}
         aria-valuemin={0}

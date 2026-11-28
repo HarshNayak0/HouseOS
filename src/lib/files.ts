@@ -31,7 +31,7 @@ async function upload(bucket: string, folder: string, file: Blob): Promise<strin
 export const uploadRecipePhoto = (householdId: string, file: Blob) => upload(PHOTO_BUCKET, householdId, file);
 
 /** A memory photo, trip cover or booking attachment, in the household's private folder. */
-export const uploadHouseholdFile = (householdId: string, kind: "memories" | "trips" | "bookings", file: Blob) =>
+export const uploadHouseholdFile = (householdId: string, kind: "memories" | "trips" | "bookings" | "photos", file: Blob) =>
   upload(FILES_BUCKET, `${householdId}/${kind}`, file);
 
 /** A short-lived (1 hour) signed link to a private file, cached for 50 minutes. */

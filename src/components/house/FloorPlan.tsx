@@ -67,7 +67,7 @@ export function FloorPlan({
                   fill={isYard ? (on ? "#7d9a4e" : "#6b8a3f") : on ? "#c2573f" : "#9c3b2a"}
                   stroke={on ? "#E2C27A" : "#2f1510"}
                   strokeWidth={on ? 0.16 : 0.1}
-                  className="transition-[fill] group-hover:brightness-110 group-focus-visible:stroke-[#E2C27A] group-focus-visible:[stroke-width:0.22]"
+                  className="transition-[fill] group-hover:brightness-110 group-focus-visible:stroke-brass-light group-focus-visible:[stroke-width:0.22]"
                 />
                 {id === "living" && <rect {...rect(HALL)} fill={on ? "#c2573f" : "#9c3b2a"} />}
                 {id === "living" && (

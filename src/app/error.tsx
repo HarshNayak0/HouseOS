@@ -14,7 +14,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
         <div className="p-5">
           <h1 className="m-0 font-serif text-2xl font-semibold">Something went wrong</h1>
           <p className="mt-2 text-sm text-ink-2">Try again. If it keeps happening, send a screenshot of this box.</p>
-          <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-[#f3ead9] p-3 text-xs break-words whitespace-pre-wrap">
+          <pre className="mt-3 max-h-48 overflow-auto rounded-lg bg-sunken p-3 text-xs break-words whitespace-pre-wrap">
             {error.name}: {error.message}
             {error.digest ? `\ndigest ${error.digest}` : ""}
             {`\nversion ${process.env.NEXT_PUBLIC_BUILD} · ${typeof location !== "undefined" ? location.pathname : ""}`}
@@ -24,7 +24,7 @@ export default function ErrorPage({ error, reset }: { error: Error & { digest?: 
               Try again
             </button>
             {/* eslint-disable-next-line @next/next/no-html-link-for-pages -- full reload on purpose */}
-            <a href="/" className="inline-flex min-h-11 items-center rounded-full border border-[#d8c6a6] px-5 text-sm font-bold">
+            <a href="/" className="inline-flex min-h-11 items-center rounded-full border border-line-strong px-5 text-sm font-bold">
               Home
             </a>
           </div>

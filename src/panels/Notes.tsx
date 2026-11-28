@@ -1,5 +1,6 @@
 "use client";
 
+import { celebrate } from "@/lib/feel";
 import { useState } from "react";
 import { trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { visibleNotes } from "@/lib/lists/notes";
@@ -36,13 +37,14 @@ export function NotesBoard() {
   const [color, setColor] = useState<NoteColor>("turmeric");
   const [days, setDays] = useState<number | null>(null);
   const [pinned, setPinned] = useState(false);
+  const [fresh, setFresh] = useState<string | null>(null);
 
   const notes = visibleNotes(rows).sort((a, b) => Number(b.pinned) - Number(a.pinned) || (a.created_at < b.created_at ? 1 : -1));
 
   const add = (e: React.FormEvent) => {
     e.preventDefault();
     if (!body.trim() || !me) return;
-    m.insert({
+    const id = m.insert({
       household_id: me.household_id,
       body: body.trim().slice(0, 500),
       color,
@@ -51,6 +53,8 @@ export function NotesBoard() {
     });
     setBody("");
     setPinned(false);
+    celebrate("note");
+    setFresh(id);
   };
 
   return (
@@ -70,7 +74,7 @@ export function NotesBoard() {
         {notes.map((n) => {
           const author = byUser(n.created_by);
           return (
-            <div key={n.id} className="relative flex min-h-[84px] flex-col rounded p-2.5 text-[13px] shadow-[0_2px_4px_rgba(59,36,24,0.12)]" style={{ background: NOTE_COLORS[n.color] }}>
+            <div key={n.id} className={`relative flex min-h-[84px] flex-col rounded p-2.5 text-[13px] text-[#3b2418] shadow-[0_2px_4px_rgba(59,36,24,0.12)] ${n.id === fresh ? "moment-pin" : ""}`} style={{ background: NOTE_COLORS[n.color] }}>
               {n.pinned && (
                 <span className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rounded-full bg-red-oxide shadow" role="img" aria-label="Pinned" />
               )}
@@ -100,7 +104,7 @@ export function NotesBoard() {
           placeholder="Leave a note…"
           rows={2}
           maxLength={500}
-          className="w-full rounded-lg border border-[#dccdb2] p-2 text-[15px]"
+          className="w-full rounded-lg border border-line-strong p-2 text-[15px]"
           style={{ background: NOTE_COLORS[color] }}
           value={body}
           onChange={(e) => setBody(e.target.value)}
