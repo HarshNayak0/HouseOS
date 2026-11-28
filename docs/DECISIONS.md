@@ -4,6 +4,9 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-29 | Outside the house the camera can pan along the ground and come as close as 1.6 m (target kept inside the compound; Recentre button; no idle drift once moved); inside it stays fixed | Harsh couldn't read the nameplate with the pivot locked to the house centre |
+| 2026-11-29 | Room labels use the panel colour tokens (dark at night) | Cream text on cream bubbles was unreadable in the night look |
+| 2026-11-29 | Basket moment made bigger (a basket pops up in the row) and reduce-motion now gets fades instead of nothing | The first version was too quick and small to notice, and disappeared entirely with reduce motion on |
 | 2026-11-29 | Panels follow the sun with four looks (morning, day, dusk, night) via colour tokens redefined on `html[data-look]`; hard-coded hex colours in panels replaced by tokens | One switch changes every panel consistently; registered CSS properties let it fade; axe checks both day and night |
 | 2026-11-29 | Nameplate, chappals (from a once-a-day `last_seen_on`, no location), three wall photos, a jasmine that grows with things done together (never shrinks or wilts) | Harsh's picks from the homey brainstorm; nothing that guilts or tracks |
 | 2026-11-29 | Festivals and seasons computed on the device (`decor.ts`) with a small table of moving dates (Onam 2026–28; Diwali, Vishu 2026–30); unknown years show nothing rather than a guess | Almanacs disagreed for Onam after 2028; better no pookalam than one on the wrong day |

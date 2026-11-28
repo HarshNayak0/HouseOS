@@ -7,7 +7,21 @@ import { celebrate } from "@/lib/feel";
 import { useNow } from "@/lib/lists/useNow";
 import { dueStaples, type FrequencyRow } from "@/lib/staples";
 import { usePeople } from "./ui";
-import { Basket, Check, EmptyState, IconButton, PartnerHint, Row, Sec, Trash, TrashIcon, addBtn, inputCls, linkBtn, smallSelect } from "./ui";
+import {
+  Basket,
+  Check,
+  EmptyState,
+  IconButton,
+  PartnerHint,
+  Row,
+  Sec,
+  Trash,
+  TrashIcon,
+  addBtn,
+  inputCls,
+  linkBtn,
+  smallSelect,
+} from "./ui";
 
 export interface ShoppingItem extends BaseRow {
   name: string;
@@ -31,7 +45,9 @@ const VISIT_MS = 2 * 3_600_000;
 /** Store visits still going (not ended, under 2 hours old). */
 export const activeVisits = (rows: StoreVisit[] | undefined, now: number) =>
   // (a visit just started here has no started_at until the server answers: count it as now)
-  (rows ?? []).filter((v) => !v.ended_at && now - (v.started_at ? Date.parse(v.started_at) : now) < VISIT_MS);
+  (rows ?? []).filter(
+    (v) => !v.ended_at && now - (v.started_at ? Date.parse(v.started_at) : now) < VISIT_MS,
+  );
 
 const norm = (s: string) => s.trim().replace(/\s+/g, " ").toLowerCase();
 const ANY = "Any store";
@@ -68,7 +84,9 @@ export function ShoppingList() {
   const groups = useMemo(() => {
     const g = new Map<string, ShoppingItem[]>();
     for (const i of open) g.set(i.store, [...(g.get(i.store) ?? []), i]);
-    return [...g.entries()].sort(([a], [b]) => (a === ANY ? 1 : b === ANY ? -1 : a.localeCompare(b)));
+    return [...g.entries()].sort(([a], [b]) =>
+      a === ANY ? 1 : b === ANY ? -1 : a.localeCompare(b),
+    );
   }, [open]);
 
   const onList = new Set(open.map((i) => i.normalized_name));
@@ -76,7 +94,12 @@ export function ShoppingList() {
   const staples = q ? [] : dueStaples(freq, onList, nowMs);
   const stapleKeys = new Set(staples.map((x) => x.key));
   const suggestions = (freq ?? [])
-    .filter((f) => !onList.has(f.normalized_name) && !stapleKeys.has(f.normalized_name) && (q ? f.normalized_name.startsWith(q) && f.normalized_name !== q : true))
+    .filter(
+      (f) =>
+        !onList.has(f.normalized_name) &&
+        !stapleKeys.has(f.normalized_name) &&
+        (q ? f.normalized_name.startsWith(q) && f.normalized_name !== q : true),
+    )
     .slice(0, q ? 5 : 6);
 
   const add = (rawName: string, rawStore?: string | null) => {
@@ -90,7 +113,12 @@ export function ShoppingList() {
     } else {
       const wasChecked = checked.find((i) => i.normalized_name === key);
       if (wasChecked) m.update(wasChecked.id, { checked_at: null });
-      else m.insert({ household_id: me.household_id, name: n.slice(0, 80), store: targetStore.slice(0, 40) });
+      else
+        m.insert({
+          household_id: me.household_id,
+          name: n.slice(0, 80),
+          store: targetStore.slice(0, 40),
+        });
     }
     setName("");
     if (store === NEW_STORE && newStore.trim()) {
@@ -110,7 +138,10 @@ export function ShoppingList() {
   };
 
   return (
-    <Sec title="Shopping list" right={<span className="font-normal normal-case tracking-normal">{open.length} to get</span>}>
+    <Sec
+      title="Shopping list"
+      right={<span className="font-normal normal-case tracking-normal">{open.length} to get</span>}
+    >
       <StoreVisitBar stores={stores.filter((x) => x !== ANY)} />
       <form
         className="flex flex-wrap gap-1.5"
@@ -133,7 +164,12 @@ export function ShoppingList() {
           Add
         </button>
         <div className="flex w-full gap-1.5">
-          <select aria-label="Store" className={`${smallSelect} flex-1`} value={store} onChange={(e) => setStore(e.target.value)}>
+          <select
+            aria-label="Store"
+            className={`${smallSelect} flex-1`}
+            value={store}
+            onChange={(e) => setStore(e.target.value)}
+          >
             {stores.map((s) => (
               <option key={s} value={s}>
                 {s}
@@ -142,12 +178,22 @@ export function ShoppingList() {
             <option value={NEW_STORE}>New store…</option>
           </select>
           {store === NEW_STORE && (
-            <input className={inputCls} placeholder="Store name" aria-label="New store name" value={newStore} maxLength={40} onChange={(e) => setNewStore(e.target.value)} />
+            <input
+              className={inputCls}
+              placeholder="Store name"
+              aria-label="New store name"
+              value={newStore}
+              maxLength={40}
+              onChange={(e) => setNewStore(e.target.value)}
+            />
           )}
         </div>
       </form>
       {staples.length > 0 && (
-        <div className="mt-2 rounded-lg border border-callout-line bg-callout p-2" aria-label="Probably running low">
+        <div
+          className="mt-2 rounded-lg border border-callout-line bg-callout p-2"
+          aria-label="Probably running low"
+        >
           <div className="mb-1 flex items-center justify-between">
             <span className="text-[11px] font-bold text-callout-ink">Probably running low</span>
             <button
@@ -178,7 +224,10 @@ export function ShoppingList() {
         </div>
       )}
       {suggestions.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1.5" aria-label={q ? "Suggestions" : "Often bought"}>
+        <div
+          className="mt-2 flex flex-wrap gap-1.5"
+          aria-label={q ? "Suggestions" : "Often bought"}
+        >
           {!q && <span className="w-full text-[11px] text-ink-2">Often bought</span>}
           {suggestions.map((s) => (
             <button
@@ -212,7 +261,13 @@ export function ShoppingList() {
           <div key={s}>
             <div className="mt-2 text-xs font-bold text-ink-2">{s}</div>
             {list.map((i) => (
-              <ItemRow key={i.id} item={i} onCheck={(v) => checkItem(i, v)} onDelete={() => m.remove(i.id, `Removed ${i.name}`)} onRename={(n) => m.update(i.id, { name: n })} />
+              <ItemRow
+                key={i.id}
+                item={i}
+                onCheck={(v) => checkItem(i, v)}
+                onDelete={() => m.remove(i.id, `Removed ${i.name}`)}
+                onRename={(n) => m.update(i.id, { name: n })}
+              />
             ))}
           </div>
         ))}
@@ -228,7 +283,13 @@ export function ShoppingList() {
               </button>
             </div>
             {checked.map((i) => (
-              <ItemRow key={i.id} item={i} onCheck={(v) => checkItem(i, v)} onDelete={() => m.remove(i.id, `Removed ${i.name}`)} onRename={(n) => m.update(i.id, { name: n })} />
+              <ItemRow
+                key={i.id}
+                item={i}
+                onCheck={(v) => checkItem(i, v)}
+                onDelete={() => m.remove(i.id, `Removed ${i.name}`)}
+                onRename={(n) => m.update(i.id, { name: n })}
+              />
             ))}
           </div>
         )}
@@ -258,50 +319,75 @@ function ItemRow({
   const check = (v: boolean) => {
     if (!v || dropping) return onCheck(v);
     setDropping(true);
-    setTimeout(() => onCheck(true), 330);
+    setTimeout(() => onCheck(true), 720);
   };
   return (
-    <Row done={!!item.checked_at || dropping} className={dropping ? "moment-drop" : ""}>
-      <Check checked={!!item.checked_at || dropping} onChange={check} label={`Got ${item.name}`} />
-      <div className="grow min-w-0">
-        {editing ? (
-          <input
-            autoFocus
-            className={`${inputCls} w-full`}
-            value={val}
-            maxLength={80}
-            aria-label="Item name"
-            onChange={(e) => setVal(e.target.value)}
-            onBlur={() => {
-              setEditing(false);
-              if (val.trim() && val.trim() !== item.name) onRename(val.trim());
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") e.currentTarget.blur();
-              if (e.key === "Escape") {
-                setVal(item.name);
+    <div className="relative">
+      {dropping && (
+        <span
+          className="moment-basket pointer-events-none absolute top-1/2 right-12 z-10"
+          aria-hidden="true"
+        >
+          <Basket bounce={0} size={36} />
+        </span>
+      )}
+      <Row done={!!item.checked_at || dropping} className={dropping ? "moment-dropping" : ""}>
+        <Check
+          checked={!!item.checked_at || dropping}
+          onChange={check}
+          label={`Got ${item.name}`}
+        />
+        <div className="grow min-w-0">
+          {editing ? (
+            <input
+              autoFocus
+              className={`${inputCls} w-full`}
+              value={val}
+              maxLength={80}
+              aria-label="Item name"
+              onChange={(e) => setVal(e.target.value)}
+              onBlur={() => {
                 setEditing(false);
-              }
-            }}
-          />
-        ) : (
-          <button type="button" className="min-h-9 text-left" onClick={() => setEditing(true)} aria-label={`${item.name}, tap to rename`}>
-            {item.name}
-            {item.qty ? <span className="text-ink-2"> · {item.qty}{item.unit ? ` ${item.unit}` : ""}</span> : null}
-          </button>
-        )}
-        {by && (
-          <span className="block">
-            {/* inline-block so the item's strike-through doesn't run through this line */}
-            <span className="inline-block text-[11px] text-ink-2">got by {by.display_name}</span>
-          </span>
-        )}
-        <PartnerHint id={item.id} />
-      </div>
-      <IconButton label={`Delete ${item.name}`} onClick={onDelete}>
-        <TrashIcon />
-      </IconButton>
-    </Row>
+                if (val.trim() && val.trim() !== item.name) onRename(val.trim());
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") e.currentTarget.blur();
+                if (e.key === "Escape") {
+                  setVal(item.name);
+                  setEditing(false);
+                }
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className="min-h-9 text-left"
+              onClick={() => setEditing(true)}
+              aria-label={`${item.name}, tap to rename`}
+            >
+              {item.name}
+              {item.qty ? (
+                <span className="text-ink-2">
+                  {" "}
+                  · {item.qty}
+                  {item.unit ? ` ${item.unit}` : ""}
+                </span>
+              ) : null}
+            </button>
+          )}
+          {by && (
+            <span className="block">
+              {/* inline-block so the item's strike-through doesn't run through this line */}
+              <span className="inline-block text-[11px] text-ink-2">got by {by.display_name}</span>
+            </span>
+          )}
+          <PartnerHint id={item.id} />
+        </div>
+        <IconButton label={`Delete ${item.name}`} onClick={onDelete}>
+          <TrashIcon />
+        </IconButton>
+      </Row>
+    </div>
   );
 }
 
@@ -320,23 +406,36 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
     if (!me || !name.trim()) return;
     m.insert({ household_id: me.household_id, member_id: me.id, store: name.trim().slice(0, 40) });
     setPicking(false);
-    toast(`${partner?.display_name ?? "Your partner"} will get a notification that you're at ${name.trim()}`);
+    toast(
+      `${partner?.display_name ?? "Your partner"} will get a notification that you're at ${name.trim()}`,
+    );
   };
   const end = (id: string) => m.update(id, { ended_at: new Date().toISOString() });
-  const mins = (v: StoreVisit) => Math.max(1, Math.round((nowMs - Date.parse(v.started_at)) / 60_000));
+  const mins = (v: StoreVisit) =>
+    Math.max(1, Math.round((nowMs - Date.parse(v.started_at)) / 60_000));
   return (
     <div className="mb-2">
       {theirs.map((v) => (
-        <div key={v.id} role="status" className="mb-1.5 rounded-lg border border-ok-line bg-ok px-3 py-2 text-sm">
-          🛒 <b>{byId(v.member_id)?.display_name ?? "Your partner"}</b> is at <b>{v.store}</b> now ({mins(v)} min). Add anything you need and it&apos;s sent to them.
+        <div
+          key={v.id}
+          role="status"
+          className="mb-1.5 rounded-lg border border-ok-line bg-ok px-3 py-2 text-sm"
+        >
+          🛒 <b>{byId(v.member_id)?.display_name ?? "Your partner"}</b> is at <b>{v.store}</b> now (
+          {mins(v)} min). Add anything you need and it&apos;s sent to them.
         </div>
       ))}
       {mine ? (
         <div className="flex items-center gap-2 rounded-lg border border-ok-line bg-ok px-3 py-2 text-sm">
           <span className="flex-1">
-            🛒 You&apos;re at <b>{mine.store}</b>. New items from your partner come to you as notifications.
+            🛒 You&apos;re at <b>{mine.store}</b>. New items from your partner come to you as
+            notifications.
           </span>
-          <button type="button" className="min-h-9 flex-none text-xs font-bold text-teak underline" onClick={() => end(mine.id)}>
+          <button
+            type="button"
+            className="min-h-9 flex-none text-xs font-bold text-teak underline"
+            onClick={() => end(mine.id)}
+          >
             Done shopping
           </button>
         </div>
@@ -350,11 +449,23 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
         >
           <span className="w-full text-xs font-bold text-ink-2">Which store?</span>
           {stores.map((s) => (
-            <button key={s} type="button" onClick={() => start(s)} className="min-h-9 rounded-full border border-line bg-card px-3 text-xs font-bold text-teak">
+            <button
+              key={s}
+              type="button"
+              onClick={() => start(s)}
+              className="min-h-9 rounded-full border border-line bg-card px-3 text-xs font-bold text-teak"
+            >
               {s}
             </button>
           ))}
-          <input className={`${inputCls} min-w-32`} placeholder="Another store" aria-label="Store name" maxLength={40} value={store} onChange={(e) => setStore(e.target.value)} />
+          <input
+            className={`${inputCls} min-w-32`}
+            placeholder="Another store"
+            aria-label="Store name"
+            maxLength={40}
+            value={store}
+            onChange={(e) => setStore(e.target.value)}
+          />
           <button type="submit" className={addBtn} disabled={!store.trim()}>
             Go
           </button>

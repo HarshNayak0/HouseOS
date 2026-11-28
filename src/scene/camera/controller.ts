@@ -63,10 +63,36 @@ export class HouseController {
     private reducedMotion = false,
   ) {
     controls.addEventListener("start", this.markInteraction);
+    this.setFreedom("outside");
     applyEvening(0, false, model.lighting, model.lamps, renderer, scene, model.T);
   }
 
-  setHandlers(h: { onTapRoom?: (id: RoomId) => void; onTapOutside?: () => void; onTapPhoto?: (i: number) => void; onModeChange?: (mode: Mode) => void }) {
+  /**
+   * Outside you can move around the compound freely: drag to turn, two fingers (or right-drag) to
+   * slide along the ground, pinch to come close (to read the nameplate, say). Inside, the camera is
+   * fixed on the house and only turns and zooms.
+   */
+  private setFreedom(mode: Mode) {
+    const c = this.controls;
+    const free = mode === "outside";
+    c.enablePan = free;
+    c.screenSpacePanning = false; // slide along the ground, not up into the sky
+    c.panSpeed = 0.9;
+    c.minDistance = free ? 1.6 : 4;
+  }
+
+  /** Whether the camera has been moved away from the house's usual view (outside). */
+  moved = false;
+  onMovedChange?: (moved: boolean) => void;
+
+  /** Back to the usual view of the whole house. */
+  recentre() {
+    const { w, h } = this.size();
+    this.fly(views(w, h).ext, 900);
+    this.lastInteraction = performance.now();
+  }
+
+  setHandlers(h: { onTapRoom?: (id: RoomId) => void; onTapOutside?: () => void; onTapPhoto?: (i: number) => void; onModeChange?: (mode: Mode) => void; onMovedChange?: (moved: boolean) => void }) {
     Object.assign(this, h);
   }
 
@@ -132,6 +158,7 @@ export class HouseController {
     const { w, h } = this.size();
     if (room) {
       this.mode = "inside";
+      this.setFreedom("inside");
       this.setRoofWalls(true, true);
       this.selected = room;
       this.setHighlight(room, true, 1);
@@ -169,6 +196,7 @@ export class HouseController {
   goInside() {
     if (this.mode === "inside") return;
     this.mode = "inside";
+    this.setFreedom("inside");
     this.setRoofWalls(true);
     const { w, h } = this.size();
     this.fly(views(w, h).ins, 1300);
@@ -179,6 +207,7 @@ export class HouseController {
     this.clearSelection(true);
     if (this.mode === "outside") return;
     this.mode = "outside";
+    this.setFreedom("outside");
     this.setRoofWalls(false);
     const { w, h } = this.size();
     this.fly(views(w, h).ext, 1300);
@@ -189,6 +218,7 @@ export class HouseController {
   select(id: RoomId) {
     if (this.mode !== "inside") {
       this.mode = "inside";
+      this.setFreedom("inside");
       this.setRoofWalls(true);
       this.onModeChange?.("inside");
     }
@@ -374,8 +404,24 @@ export class HouseController {
     m.indicators.fridgeBadge.sprite.material.opacity = badgeOpacity;
     m.indicators.choreBadge.sprite.material.opacity = badgeOpacity;
 
-    // gentle idle drift on the exterior view
-    if (this.mode === "outside" && !this.tweens.length && anim && this.controls.enabled) {
+    // outside: keep the camera's focus within the compound, and notice when it has been moved
+    if (this.mode === "outside" && !this.tweens.length) {
+      const tg = this.controls.target;
+      tg.set(THREE.MathUtils.clamp(tg.x, -15, 15), THREE.MathUtils.clamp(tg.y, 0.2, 3), THREE.MathUtils.clamp(tg.z, -19, 14));
+      const { w, h } = this.size();
+      const home = views(w, h).ext;
+      const moved = tg.distanceTo(home.t) > 0.8 || Math.abs(this.camera.position.distanceTo(tg) - home.p.distanceTo(home.t)) > 4;
+      if (moved !== this.moved) {
+        this.moved = moved;
+        this.onMovedChange?.(moved);
+      }
+    } else if (this.moved && this.mode === "inside") {
+      this.moved = false;
+      this.onMovedChange?.(false);
+    }
+
+    // gentle idle drift on the exterior view (not while you're looking at something up close)
+    if (this.mode === "outside" && !this.tweens.length && anim && this.controls.enabled && !this.moved) {
       this.controls.autoRotate = now - this.lastInteraction > IDLE_DRIFT_AFTER_MS;
       this.controls.autoRotateSpeed = 0.35;
     } else if (this.controls.autoRotate) this.controls.autoRotate = false;

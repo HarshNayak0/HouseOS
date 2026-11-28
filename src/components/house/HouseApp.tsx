@@ -56,6 +56,7 @@ export function HouseApp() {
   const [progress, setProgress] = useState({ done: 0, total: 1, label: "Loading the 3D engine…" });
   const [ctrl, setCtrl] = useState<HouseController | null>(null);
   const [mode, setMode] = useState<"outside" | "inside">(room ? "inside" : "outside");
+  const [moved, setMoved] = useState(false);
   const [eveningPref, setEveningPref] = useState<EveningPref>("auto");
   const [eveningOverride, setEveningOverride] = useState<{ value: boolean; auto: boolean } | null>(null);
   const nowMs = useNow();
@@ -125,6 +126,7 @@ export function HouseApp() {
       onTapRoom: goRoom,
       onTapOutside: () => ctrl.goInside(),
       onModeChange: setMode,
+      onMovedChange: setMoved,
       // a framed photo: open it (an empty frame opens the living room, where photos are chosen)
       onTapPhoto: (i) => {
         const list = photosRef.current;
@@ -200,7 +202,7 @@ export function HouseApp() {
 
   const ready = view === "2d" || !!ctrl;
   const inside = view === "2d" || mode === "inside";
-  const hint = !ready || room ? null : inside ? "Tap a room to open it" : "Drag to look around · tap the house to step inside";
+  const hint = !ready || room || moved ? null : inside ? "Tap a room to open it" : "Drag to turn · two fingers to move and zoom · tap to step inside";
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-backdrop">
@@ -237,7 +239,7 @@ export function HouseApp() {
                 ref={(el) => ctrl.registerLabel(id, el)}
                 onClick={onRoomLink(id)}
                 style={{ opacity: 0 }}
-                className="absolute top-0 left-0 cursor-pointer rounded-full border border-brass bg-[rgba(251,248,242,0.94)] px-[11px] pt-1 pb-[3px] text-center text-[12.5px] leading-[1.15] font-bold whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(59,36,24,0.15)] transition-opacity duration-300 hover:bg-card-warm"
+                className="absolute top-0 left-0 cursor-pointer rounded-full border border-brass bg-paper/95 px-[11px] pt-1 pb-[3px] text-center text-[12.5px] leading-[1.15] font-bold whitespace-nowrap text-ink shadow-[0_2px_8px_rgba(59,36,24,0.15)] transition-opacity duration-300 hover:bg-card-warm"
               >
                 {l.name}
                 {l.ml && (
@@ -280,6 +282,11 @@ export function HouseApp() {
         <div className="pointer-events-auto flex gap-2">
           {view === "3d" && (
             <>
+              {mode === "outside" && moved && (
+                <HeaderButton onClick={() => ctrl?.recentre()} disabled={!ctrl}>
+                  Recentre
+                </HeaderButton>
+              )}
               <HeaderButton primary={mode === "outside"} onClick={toggleMode} disabled={!ctrl}>
                 {mode === "outside" ? "Step inside" : "View outside"}
               </HeaderButton>

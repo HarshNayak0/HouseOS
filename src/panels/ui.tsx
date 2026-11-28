@@ -56,9 +56,9 @@ export function InkCheck({ checked, onChange, label }: { checked: boolean; onCha
 }
 
 /** A small woven basket (the shopping list's "in the basket"). */
-export function Basket({ bounce }: { bounce: number }) {
+export function Basket({ bounce, size = 22 }: { bounce: number; size?: number }) {
   return (
-    <svg key={bounce} width="22" height="18" viewBox="0 0 22 18" aria-hidden="true" className={bounce ? "moment-bounce" : ""} style={{ transformOrigin: "50% 100%" }}>
+    <svg key={bounce} width={size} height={(size * 18) / 22} viewBox="0 0 22 18" aria-hidden="true" className={bounce ? "moment-bounce" : ""} style={{ transformOrigin: "50% 100%" }}>
       <path d="M5 7 Q11 -1 17 7" fill="none" stroke="var(--color-teak)" strokeWidth="1.6" />
       <path d="M2 7 H20 L17.5 17 H4.5 Z" fill="var(--color-brass)" />
       <path d="M3 10 H19 M3.8 13 H18.2 M7 7 L8 17 M11 7 V17 M15 7 L14 17" stroke="var(--color-teak)" strokeWidth="0.9" opacity="0.7" />

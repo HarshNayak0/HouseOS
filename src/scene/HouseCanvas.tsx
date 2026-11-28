@@ -160,9 +160,7 @@ function Scene(props: HouseCanvasProps) {
       enableDamping
       dampingFactor={0.08}
       maxPolarAngle={Math.PI * 0.47}
-      minDistance={4}
       maxDistance={55}
-      enablePan={false}
     />
   );
 }
