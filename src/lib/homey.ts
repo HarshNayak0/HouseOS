@@ -79,3 +79,10 @@ export function useHomeyState(): HomeyState | null {
     jasmine: jasmineFor(done, today),
   };
 }
+
+/** How the jasmine is doing, in words. */
+export function jasmineWords(j: HomeyState["jasmine"]) {
+  const stage = j.growth >= 8 ? "right across the verandah" : j.growth >= 5 ? "up the pillar and along the beam" : j.growth >= 2 ? "climbing the pillar" : "just a sprout";
+  const flowers = j.thisWeek >= 14 ? "in full flower" : j.thisWeek >= 7 ? "flowering" : j.thisWeek ? "starting to open" : "all green buds for now";
+  return { stage, flowers };
+}

@@ -219,15 +219,6 @@ html[data-look="night"] .text-brass { color: #e2c27a; }
 html[data-look="night"] .text-terracotta { color: #f0ae8c; }
 
 /* ---------- small moments (a plain fade with reduce motion, via the rule above) ---------- */
-@keyframes drop-in-basket {
-  0% { transform: none; opacity: 1; }
-  35% { transform: translateY(-4px) scale(0.96); opacity: 1; }
-  100% { transform: translateY(26px) scale(0.55); opacity: 0; }
-}
-.moment-drop {
-  animation: drop-in-basket 340ms cubic-bezier(0.5, 0, 0.75, 0) forwards;
-  pointer-events: none;
-}
 @keyframes basket-bounce {
   0%, 100% { transform: none; }
   30% { transform: translateY(3px) scaleY(0.88) scaleX(1.08); }
@@ -261,38 +252,8 @@ html[data-look="night"] .text-terracotta { color: #f0ae8c; }
   animation: row-settle 320ms ease-out;
 }
 
-/* ticking off a grocery item: a basket pops up at the end of the row, the item drops in, it bounces */
-@keyframes basket-pop {
-  0% { transform: translateY(-50%) scale(0.3); opacity: 0; }
-  22% { transform: translateY(-50%) scale(1.15); opacity: 1; }
-  38% { transform: translateY(-50%) scale(1); }
-  62% { transform: translateY(-50%) scale(1); }
-  72% { transform: translateY(calc(-50% + 4px)) scale(1.1, 0.82); }
-  84% { transform: translateY(calc(-50% - 3px)) scale(0.97, 1.06); }
-  100% { transform: translateY(-50%) scale(1); opacity: 1; }
-}
-.moment-basket {
-  transform-origin: 50% 100%;
-  animation: basket-pop 720ms ease-out forwards;
-}
-@keyframes into-basket {
-  0% { transform: none; opacity: 1; }
-  25% { transform: translateY(-6px); opacity: 1; }
-  100% { transform: translate(var(--to-basket, 140px), 10px) scale(0.2); opacity: 0; }
-}
-.moment-dropping .grow {
-  animation: into-basket 480ms 150ms cubic-bezier(0.55, 0, 0.8, 0.4) both;
-  transform-origin: 0 50%;
-}
-.moment-dropping > :not(.grow):not(label) {
-  opacity: 0;
-  transition: opacity 150ms;
-}
-
 /* reduce motion: the moments become a plain fade (instead of disappearing entirely) */
 @media (prefers-reduced-motion: reduce) {
-  .moment-basket { animation: moment-fade-in 300ms ease both !important; transform: translateY(-50%); }
-  .moment-dropping .grow { animation: moment-fade-out 400ms 200ms ease both !important; }
   .moment-pin, .moment-settle, .moment-bounce { animation: moment-fade-in 300ms ease both !important; }
   .moment-ink { animation: none !important; stroke-dashoffset: 0; }
 }

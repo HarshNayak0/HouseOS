@@ -26,7 +26,7 @@ import {
 import { FloorPlan } from "./FloorPlan";
 import { PhotoViewer } from "./PhotoViewer";
 import { AmbienceController } from "./Ambience";
-import { useHomeyState } from "@/lib/homey";
+import { jasmineWords, useHomeyState } from "@/lib/homey";
 import { QuickAdd } from "./QuickAdd";
 import { RoomPanel } from "./RoomPanel";
 
@@ -57,6 +57,7 @@ export function HouseApp() {
   const [ctrl, setCtrl] = useState<HouseController | null>(null);
   const [mode, setMode] = useState<"outside" | "inside">(room ? "inside" : "outside");
   const [moved, setMoved] = useState(false);
+  const [closeUp, setCloseUp] = useState(false);
   const [eveningPref, setEveningPref] = useState<EveningPref>("auto");
   const [eveningOverride, setEveningOverride] = useState<{ value: boolean; auto: boolean } | null>(null);
   const nowMs = useNow();
@@ -127,6 +128,7 @@ export function HouseApp() {
       onTapOutside: () => ctrl.goInside(),
       onModeChange: setMode,
       onMovedChange: setMoved,
+      onCloseUpChange: setCloseUp,
       // a framed photo: open it (an empty frame opens the living room, where photos are chosen)
       onTapPhoto: (i) => {
         const list = photosRef.current;
@@ -202,7 +204,7 @@ export function HouseApp() {
 
   const ready = view === "2d" || !!ctrl;
   const inside = view === "2d" || mode === "inside";
-  const hint = !ready || room || moved ? null : inside ? "Tap a room to open it" : "Drag to turn · two fingers to move and zoom · tap to step inside";
+  const hint = !ready || room || moved || closeUp ? null : inside ? "Tap a room to open it" : "Drag to turn · two fingers to move and zoom · tap the house to step inside";
 
   return (
     <div className="fixed inset-0 overflow-hidden bg-backdrop">
@@ -251,6 +253,46 @@ export function HouseApp() {
             );
           })}
         </div>
+      )}
+
+      {/* The jasmine: a small marker on the verandah outside; tap it for a close look */}
+      {view === "3d" && ctrl && (
+        <div className="pointer-events-none fixed inset-0 z-[3]">
+          <button
+            type="button"
+            ref={(el) => ctrl.registerJasmineLabel(el)}
+            onClick={() => ctrl.viewJasmine()}
+            style={{ opacity: 0 }}
+            aria-label="Look at the jasmine up close"
+            className="absolute top-0 left-0 flex h-9 items-center gap-1 rounded-full border border-brass bg-paper/90 px-2.5 text-[12px] font-bold text-ink shadow-[0_2px_8px_rgba(59,36,24,0.18)] transition-opacity duration-300"
+          >
+            <span aria-hidden="true">🌼</span>
+            <span aria-hidden="true">Jasmine</span>
+          </button>
+        </div>
+      )}
+      {closeUp && homey && (
+        <section
+          aria-label="The jasmine on the verandah"
+          className="fixed inset-x-3 bottom-[max(20px,calc(env(safe-area-inset-bottom)+12px))] z-20 mx-auto max-w-sm rounded-[10px] min-[721px]:right-6 min-[721px]:left-auto min-[721px]:w-[360px] border border-brass bg-paper p-3.5 shadow-[0_8px_30px_rgba(59,36,24,0.25)]"
+        >
+          <h2 className="m-0 font-serif text-lg font-semibold">🌼 The jasmine on the verandah</h2>
+          <p className="m-0 mt-1 text-sm">
+            It&apos;s {jasmineWords(homey.jasmine).stage}, and {jasmineWords(homey.jasmine).flowers}.
+          </p>
+          <p className="m-0 mt-1 text-xs text-ink-2">
+            {homey.jasmine.thisWeek} {homey.jasmine.thisWeek === 1 ? "thing" : "things"} done together this week · {homey.jasmine.total} in all. Chores, tasks and dates help it grow, and
+            a busy week covers it in flowers. It never wilts.
+          </p>
+          <div className="mt-2.5 flex gap-2">
+            <button type="button" className="min-h-11 rounded-lg bg-red-oxide px-3 text-sm font-bold text-white" onClick={() => ctrl?.recentre()}>
+              Back to the house
+            </button>
+            <button type="button" className="min-h-11 px-2 text-sm font-bold text-teak underline" onClick={() => ctrl?.endCloseUp()}>
+              Keep looking
+            </button>
+          </div>
+        </section>
       )}
 
       {/* Rooms list for keyboard and screen-reader users in 3D mode */}

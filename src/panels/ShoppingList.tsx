@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { live, trashed, useRowMutation, useRows, type BaseRow } from "@/lib/lists/rows";
 import { toast } from "@/lib/lists/toast";
 import { celebrate } from "@/lib/feel";
+import { effectiveReducedMotion } from "@/lib/view-pref";
 import { useNow } from "@/lib/lists/useNow";
 import { dueStaples, type FrequencyRow } from "@/lib/staples";
 import { usePeople } from "./ui";
@@ -66,12 +67,19 @@ export function ShoppingList() {
 
   const items = live(rows);
   const [bounce, setBounce] = useState(0);
+  const basketRef = useRef<HTMLSpanElement>(null);
+  const [arrived, setArrived] = useState<string | null>(null);
   const checkItem = (i: ShoppingItem, v: boolean) => {
     m.update(i.id, { checked_at: v ? new Date().toISOString() : null });
     if (v) {
-      celebrate("check");
-      setBounce((b) => b + 1);
+      setArrived(i.id);
+      setTimeout(() => setArrived((a) => (a === i.id ? null : a)), 1000);
     }
+  };
+  // the item has landed in the basket: it bounces (and ticks, and buzzes)
+  const landed = () => {
+    celebrate("check");
+    setBounce((b) => b + 1);
   };
   const open = items.filter((i) => !i.checked_at);
   const checked = items.filter((i) => i.checked_at);
@@ -264,6 +272,8 @@ export function ShoppingList() {
               <ItemRow
                 key={i.id}
                 item={i}
+                basket={() => basketRef.current}
+                onLanded={landed}
                 onCheck={(v) => checkItem(i, v)}
                 onDelete={() => m.remove(i.id, `Removed ${i.name}`)}
                 onRename={(n) => m.update(i.id, { name: n })}
@@ -271,21 +281,26 @@ export function ShoppingList() {
             ))}
           </div>
         ))}
-        {checked.length > 0 && (
+        {(checked.length > 0 || open.length > 0) && (
           <div className="mt-3">
-            <div className="flex items-center justify-between">
+            <div className="flex min-h-11 items-center justify-between">
               <span className="flex items-center gap-1.5 text-xs font-bold text-ink-2">
-                <Basket bounce={bounce} />
+                <span ref={basketRef} className="inline-flex">
+                  <Basket bounce={bounce} size={26} />
+                </span>
                 In the basket ({checked.length})
               </span>
-              <button type="button" className={linkBtn} onClick={clearChecked}>
-                Clear checked
-              </button>
+              {checked.length > 0 && (
+                <button type="button" className={linkBtn} onClick={clearChecked}>
+                  Clear checked
+                </button>
+              )}
             </div>
             {checked.map((i) => (
               <ItemRow
                 key={i.id}
                 item={i}
+                arrived={i.id === arrived}
                 onCheck={(v) => checkItem(i, v)}
                 onDelete={() => m.remove(i.id, `Removed ${i.name}`)}
                 onRename={(n) => m.update(i.id, { name: n })}
@@ -304,8 +319,14 @@ function ItemRow({
   onCheck,
   onDelete,
   onRename,
+  basket,
+  onLanded,
+  arrived,
 }: {
   item: ShoppingItem;
+  basket?: () => HTMLElement | null;
+  onLanded?: () => void;
+  arrived?: boolean;
   onCheck: (v: boolean) => void;
   onDelete: () => void;
   onRename: (n: string) => void;
@@ -313,25 +334,44 @@ function ItemRow({
   const [editing, setEditing] = useState(false);
   const [val, setVal] = useState(item.name);
   const [dropping, setDropping] = useState(false);
+  const wrap = useRef<HTMLDivElement>(null);
+  const nameRef = useRef<HTMLButtonElement>(null);
   const { byId } = usePeople();
   const by = item.checked_at ? byId(item.checked_by) : null;
-  // ticking an item off: it shrinks and drops into the basket, then moves there
+  // just landed in the basket: the row opens up gently
+  useEffect(() => {
+    if (!arrived || !wrap.current) return;
+    const h = wrap.current.offsetHeight;
+    wrap.current.animate(
+      effectiveReducedMotion()
+        ? [{ opacity: 0 }, { opacity: 1 }]
+        : [
+            { height: "0px", opacity: 0, transform: "translateY(-6px)" },
+            { height: `${h}px`, opacity: 1, transform: "none" },
+          ],
+      { duration: 280, easing: "ease-out" },
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when it arrives
+  }, []);
+  // ticking an item off: its name flies in an arc into the basket, the row closes up behind it
   const check = (v: boolean) => {
-    if (!v || dropping) return onCheck(v);
+    if (!v) return onCheck(false);
+    if (dropping || !wrap.current) return;
     setDropping(true);
-    setTimeout(() => onCheck(true), 720);
+    flyToBasket(wrap.current, nameRef.current, item.name, basket?.() ?? null).then(() => {
+      onLanded?.();
+      onCheck(true);
+      // if the save failed and the item is back on the list, show the row again
+      setTimeout(() => {
+        if (!wrap.current) return;
+        wrap.current.getAnimations().forEach((a) => a.cancel());
+        setDropping(false);
+      }, 1500);
+    });
   };
   return (
-    <div className="relative">
-      {dropping && (
-        <span
-          className="moment-basket pointer-events-none absolute top-1/2 right-12 z-10"
-          aria-hidden="true"
-        >
-          <Basket bounce={0} size={36} />
-        </span>
-      )}
-      <Row done={!!item.checked_at || dropping} className={dropping ? "moment-dropping" : ""}>
+    <div ref={wrap} className="relative overflow-hidden">
+      <Row done={!!item.checked_at || dropping}>
         <Check
           checked={!!item.checked_at || dropping}
           onChange={check}
@@ -360,8 +400,9 @@ function ItemRow({
             />
           ) : (
             <button
+              ref={nameRef}
               type="button"
-              className="min-h-9 text-left"
+              className={`min-h-9 text-left transition-opacity duration-100 ${dropping ? "opacity-0" : ""}`}
               onClick={() => setEditing(true)}
               aria-label={`${item.name}, tap to rename`}
             >
@@ -491,4 +532,96 @@ function StoreVisitBar({ stores }: { stores: string[] }) {
       )}
     </div>
   );
+}
+
+/** The nearest scrolling ancestor (the room panel's body). */
+function scroller(el: HTMLElement): HTMLElement | null {
+  for (let p = el.parentElement; p; p = p.parentElement) {
+    const o = getComputedStyle(p).overflowY;
+    if (o === "auto" || o === "scroll") return p;
+  }
+  return null;
+}
+
+/**
+ * The item's name lifts off its row and flies in an arc into the basket (or toward the bottom of the
+ * panel if the basket is scrolled out of view); the row closes up behind it. With reduce motion on,
+ * the row simply fades. Resolves when the item has landed.
+ */
+function flyToBasket(
+  row: HTMLElement,
+  nameEl: HTMLElement | null,
+  name: string,
+  basket: HTMLElement | null,
+): Promise<void> {
+  if (effectiveReducedMotion() || typeof row.animate !== "function") {
+    return row
+      .animate([{ opacity: 1 }, { opacity: 0 }], { duration: 220, fill: "forwards" })
+      .finished.then(
+        () => undefined,
+        () => undefined,
+      );
+  }
+  const from = (nameEl ?? row).getBoundingClientRect();
+  const scroll = scroller(row);
+  // where the basket is right now (it moves up as the row closes), kept inside the visible panel
+  const target = () => {
+    const box = scroll?.getBoundingClientRect() ?? { top: 0, bottom: innerHeight, left: 0 };
+    const t = basket?.getBoundingClientRect();
+    const x = t ? t.left + t.width / 2 : box.left + 40;
+    const y = t ? t.top + t.height / 2 : box.bottom - 24;
+    return { x, y: Math.min(Math.max(y, box.top + 20), box.bottom - 20) };
+  };
+
+  const ghost = document.createElement("div");
+  const cs = nameEl ? getComputedStyle(nameEl) : null;
+  ghost.textContent = name;
+  ghost.setAttribute("aria-hidden", "true");
+  Object.assign(ghost.style, {
+    position: "fixed",
+    left: "0px",
+    top: "0px",
+    font: cs?.font ?? "600 15px sans-serif",
+    color: cs?.color ?? "inherit",
+    whiteSpace: "nowrap",
+    pointerEvents: "none",
+    zIndex: "60",
+    transformOrigin: "0 50%",
+    willChange: "transform, opacity",
+  } satisfies Partial<CSSStyleDeclaration>);
+  document.body.appendChild(ghost);
+  const x0 = from.left,
+    y0 = from.top + from.height / 2;
+  const MS = 640;
+  const ease = (k: number) => (k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2);
+  const fly = new Promise<void>((resolve) => {
+    const t0 = performance.now();
+    const step = (now: number) => {
+      const k = Math.min(1, (now - t0) / MS);
+      const e = ease(k);
+      const { x: x1, y: y1 } = target();
+      const tx = x1 - 6;
+      // a curve that lifts up first, then drops into the basket
+      const cx = x0 + (tx - x0) * 0.45,
+        cy = Math.min(y0, y1) - Math.min(70, 30 + Math.abs(y1 - y0) * 0.25);
+      const x = (1 - e) * (1 - e) * x0 + 2 * (1 - e) * e * cx + e * e * tx;
+      const y = (1 - e) * (1 - e) * y0 + 2 * (1 - e) * e * cy + e * e * y1;
+      const sc = 1 - 0.75 * e;
+      ghost.style.transform = `translate(${x}px, ${y}px) translateY(-50%) scale(${sc})`;
+      ghost.style.opacity = String(k < 0.75 ? 1 : 1 - (k - 0.75) * 3.4);
+      if (k < 1) requestAnimationFrame(step);
+      else resolve();
+    };
+    requestAnimationFrame(step);
+  });
+  // the row closes up behind it
+  const h = row.offsetHeight;
+  row.animate(
+    [
+      { height: `${h}px`, opacity: 1 },
+      { height: "0px", opacity: 0 },
+    ],
+    { duration: 320, delay: 180, easing: "ease-in-out", fill: "forwards" },
+  );
+  return fly.then(() => ghost.remove());
 }

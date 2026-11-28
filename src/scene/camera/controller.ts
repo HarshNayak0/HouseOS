@@ -77,8 +77,15 @@ export class HouseController {
     const free = mode === "outside";
     c.enablePan = free;
     c.screenSpacePanning = false; // slide along the ground, not up into the sky
-    c.panSpeed = 0.9;
-    c.minDistance = free ? 1.6 : 4;
+    // pinch / scroll towards the middle of the screen (slide something there first); zoom-to-cursor
+    // swings the view oddly on this tilted camera
+    c.zoomToCursor = false;
+    c.panSpeed = 1;
+    c.rotateSpeed = free ? 0.8 : 1;
+    c.zoomSpeed = 0.9;
+    // a little more glide after you let go
+    c.dampingFactor = free ? 0.06 : 0.08;
+    c.minDistance = free ? 1.4 : 4;
   }
 
   /** Whether the camera has been moved away from the house's usual view (outside). */
@@ -87,12 +94,13 @@ export class HouseController {
 
   /** Back to the usual view of the whole house. */
   recentre() {
+    this.setCloseUp(false);
     const { w, h } = this.size();
     this.fly(views(w, h).ext, 900);
     this.lastInteraction = performance.now();
   }
 
-  setHandlers(h: { onTapRoom?: (id: RoomId) => void; onTapOutside?: () => void; onTapPhoto?: (i: number) => void; onModeChange?: (mode: Mode) => void; onMovedChange?: (moved: boolean) => void }) {
+  setHandlers(h: { onTapRoom?: (id: RoomId) => void; onTapOutside?: () => void; onTapPhoto?: (i: number) => void; onModeChange?: (mode: Mode) => void; onMovedChange?: (moved: boolean) => void; onCloseUpChange?: (on: boolean) => void }) {
     Object.assign(this, h);
   }
 
@@ -194,6 +202,7 @@ export class HouseController {
   }
 
   goInside() {
+    this.setCloseUp(false);
     if (this.mode === "inside") return;
     this.mode = "inside";
     this.setFreedom("inside");
@@ -294,11 +303,44 @@ export class HouseController {
     return (hit?.object.userData.room as RoomId | undefined) ?? null;
   }
 
+  private lastYardTap: { t: number; x: number; y: number } | null = null;
+
+  /** Glide to look at a point from about `dist` metres, keeping the current direction. */
+  focusOn(point: THREE.Vector3, dist: number, from?: THREE.Vector3) {
+    const dir = from ? from.clone().sub(point).normalize() : this.camera.position.clone().sub(this.controls.target).normalize();
+    if (dir.y < 0.25) dir.y = 0.25;
+    dir.normalize();
+    this.fly({ t: point.clone(), p: point.clone().addScaledVector(dir, dist) }, 900);
+    this.lastInteraction = performance.now();
+  }
+
+  private houseBox = new THREE.Box3(new THREE.Vector3(-7.6, 0, -6.6), new THREE.Vector3(7.6, 6.5, 7.1));
+  private hitsHouse(clientX: number, clientY: number) {
+    const r = this.renderer.domElement.getBoundingClientRect();
+    this.ndc.set(((clientX - r.left) / r.width) * 2 - 1, -((clientY - r.top) / r.height) * 2 + 1);
+    this.ray.setFromCamera(this.ndc, this.camera);
+    return this.ray.ray.intersectsBox(this.houseBox);
+  }
+
   /** A tap (pointer moved < 7 px). */
   tap(clientX: number, clientY: number) {
     this.markInteraction();
     if (this.mode === "outside") {
-      this.onTapOutside?.();
+      // only a tap on the house itself steps inside (taps on the yard, gate or sky do nothing,
+      // so looking around never throws you indoors)
+      if (this.hitsHouse(clientX, clientY)) {
+        this.onTapOutside?.();
+        return;
+      }
+      // a double-tap on the yard glides over to look at that spot
+      const now = performance.now();
+      const last = this.lastYardTap;
+      this.lastYardTap = { t: now, x: clientX, y: clientY };
+      if (last && now - last.t < 350 && Math.hypot(clientX - last.x, clientY - last.y) < 30) {
+        this.lastYardTap = null;
+        const spot = this.ray.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.3), new THREE.Vector3());
+        if (spot) this.focusOn(spot.clamp(new THREE.Vector3(-14, 0.3, -18), new THREE.Vector3(14, 0.3, 14)), 6);
+      }
       return;
     }
     // a framed photo in the living room opens it
@@ -323,6 +365,31 @@ export class HouseController {
     return id;
   }
 
+  /* ---------- the jasmine: a small marker outside, and a close look ---------- */
+  private jasmineEl: HTMLElement | null = null;
+  private jasmineAnchor = new THREE.Vector3(1.15, 1.95, 6.15);
+  /** True while the camera is close in on the jasmine (the page shows its card). */
+  closeUp = false;
+  onCloseUpChange?: (on: boolean) => void;
+  registerJasmineLabel(el: HTMLElement | null) {
+    this.jasmineEl = el;
+  }
+  viewJasmine() {
+    if (this.mode !== "outside") this.goOutside();
+    this.setCloseUp(true);
+    this.fly({ t: new THREE.Vector3(1.3, 1.55, 6.0), p: new THREE.Vector3(2.15, 2.0, 9.3) }, 1200);
+    this.lastInteraction = performance.now();
+  }
+  /** Hide the jasmine's card but stay where you are. */
+  endCloseUp() {
+    this.setCloseUp(false);
+  }
+  private setCloseUp(on: boolean) {
+    if (on === this.closeUp) return;
+    this.closeUp = on;
+    this.onCloseUpChange?.(on);
+  }
+
   /* ---------- labels ---------- */
   registerLabel(id: RoomId, el: HTMLElement | null) {
     if (el) this.labelEls[id] = el;
@@ -331,6 +398,14 @@ export class HouseController {
 
   private updateLabels() {
     const { w, h } = this.size();
+    if (this.jasmineEl) {
+      this.proj.copy(this.jasmineAnchor).project(this.camera);
+      const vis = this.mode === "outside" && !this.closeUp && !this.tweens.length && this.proj.z < 1 && Math.abs(this.proj.x) < 0.95 && Math.abs(this.proj.y) < 0.9;
+      this.jasmineEl.style.opacity = vis ? "1" : "0";
+      this.jasmineEl.style.pointerEvents = vis ? "auto" : "none";
+      this.jasmineEl.tabIndex = vis ? 0 : -1;
+      this.jasmineEl.style.transform = `translate(${((this.proj.x + 1) / 2) * w}px, ${((1 - this.proj.y) / 2) * h}px) translate(-50%, -50%)`;
+    }
     const showL = this.mode === "inside";
     for (const id of ROOM_IDS) {
       const el = this.labelEls[id];
@@ -406,8 +481,17 @@ export class HouseController {
 
     // outside: keep the camera's focus within the compound, and notice when it has been moved
     if (this.mode === "outside" && !this.tweens.length) {
+      // past the compound wall the view eases back in (moving camera and focus together, so the view
+      // doesn't swing), like a soft edge rather than a wall
       const tg = this.controls.target;
-      tg.set(THREE.MathUtils.clamp(tg.x, -15, 15), THREE.MathUtils.clamp(tg.y, 0.2, 3), THREE.MathUtils.clamp(tg.z, -19, 14));
+      const back = new THREE.Vector3(THREE.MathUtils.clamp(tg.x, -15, 15), THREE.MathUtils.clamp(tg.y, 0, 3), THREE.MathUtils.clamp(tg.z, -19, 14.5)).sub(tg);
+      if (back.lengthSq() > 1e-6) {
+        back.multiplyScalar(0.12);
+        tg.add(back);
+        this.camera.position.add(back);
+      }
+      // never below the grass
+      if (this.camera.position.y < 0.45) this.camera.position.y += (0.45 - this.camera.position.y) * 0.3;
       const { w, h } = this.size();
       const home = views(w, h).ext;
       const moved = tg.distanceTo(home.t) > 0.8 || Math.abs(this.camera.position.distanceTo(tg) - home.p.distanceTo(home.t)) > 4;

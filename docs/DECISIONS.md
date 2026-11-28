@@ -4,6 +4,9 @@ Short log of choices and why. Newest first.
 
 | Date | Decision | Why |
 |---|---|---|
+| 2026-11-29 | Camera outside: damped glide, soft (eased) compound edge, zoom to screen centre (not cursor), double-tap the yard to focus there; taps only count with one finger, quick, on the house | Harsh found free movement clunky; pinches were being read as taps and zoom-to-cursor swings the tilted view |
+| 2026-11-29 | Jasmine marker + close-up view and card; vine rebuilt in detail (shoots, leaf pairs, five-petal flowers, buds) | Harsh asked to see the jasmine up close |
+| 2026-11-29 | Grocery tick-off: the item's name flies in an arc into the basket (following it as the row closes), the row collapses, the basket bounces, and the item eases into the basket list | The fade-in-place version read as the item vanishing and reappearing |
 | 2026-11-29 | Outside the house the camera can pan along the ground and come as close as 1.6 m (target kept inside the compound; Recentre button; no idle drift once moved); inside it stays fixed | Harsh couldn't read the nameplate with the pivot locked to the house centre |
 | 2026-11-29 | Room labels use the panel colour tokens (dark at night) | Cream text on cream bubbles was unreadable in the night look |
 | 2026-11-29 | Basket moment made bigger (a basket pops up in the row) and reduce-motion now gets fades instead of nothing | The first version was too quick and small to notice, and disappeared entirely with reduce motion on |

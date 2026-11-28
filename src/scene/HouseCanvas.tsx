@@ -100,16 +100,34 @@ function Scene(props: HouseCanvasProps) {
   // Tap vs drag (< 7 px = tap) and mouse hover, on the canvas element.
   useEffect(() => {
     const el = gl.domElement;
-    let down: { x: number; y: number } | null = null;
+    // a tap is one finger, quick, and barely moving; anything with two fingers (a pinch or a slide)
+    // never counts, even when the last finger lifts without moving
+    let down: { x: number; y: number; t: number } | null = null;
+    const active = new Set<number>();
+    let multi = false;
     const onDown = (e: PointerEvent) => {
-      down = { x: e.clientX, y: e.clientY };
+      active.add(e.pointerId);
+      if (active.size > 1) multi = true;
+      if (active.size === 1) {
+        multi = false;
+        down = { x: e.clientX, y: e.clientY, t: performance.now() };
+      }
     };
     const onUp = (e: PointerEvent) => {
-      if (!down) return;
+      active.delete(e.pointerId);
+      if (!down || multi) {
+        if (!active.size) down = null;
+        return;
+      }
       const moved = Math.hypot(e.clientX - down.x, e.clientY - down.y);
+      const long = performance.now() - down.t > 450;
       down = null;
-      if (moved > 7) return;
+      if (moved > 7 || long) return;
       ctrlRef.current?.tap(e.clientX, e.clientY);
+    };
+    const onCancel = (e: PointerEvent) => {
+      active.delete(e.pointerId);
+      down = null;
     };
     const onMove = (e: PointerEvent) => {
       if (e.pointerType !== "mouse" || down || !ctrlRef.current) return;
@@ -118,10 +136,12 @@ function Scene(props: HouseCanvasProps) {
     };
     el.addEventListener("pointerdown", onDown);
     el.addEventListener("pointerup", onUp);
+    el.addEventListener("pointercancel", onCancel);
     el.addEventListener("pointermove", onMove);
     return () => {
       el.removeEventListener("pointerdown", onDown);
       el.removeEventListener("pointerup", onUp);
+      el.removeEventListener("pointercancel", onCancel);
       el.removeEventListener("pointermove", onMove);
     };
   }, [gl]);

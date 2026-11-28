@@ -36,16 +36,6 @@ export interface Homey {
   decor: DecorState;
 }
 
-/** Points along a curve, spaced by arc length: [t, point, tangent]. */
-function along(curve: THREE.Curve<THREE.Vector3>, n: number, rnd: () => number) {
-  const out: { t: number; p: THREE.Vector3; tan: THREE.Vector3 }[] = [];
-  for (let i = 0; i < n; i++) {
-    const t = Math.min(1, (i + 0.3 + rnd() * 0.4) / n);
-    out.push({ t, p: curve.getPointAt(t), tan: curve.getTangentAt(t) });
-  }
-  return out;
-}
-
 export function buildHomey(ctx: BuildCtx, roofMats: THREE.Material[]): Homey {
   const { b, M, root } = ctx;
   const rng = new Rng(2026);
@@ -227,89 +217,192 @@ export function buildHomey(ctx: BuildCtx, roofMats: THREE.Material[]): Homey {
   }
 
   // ---------------- jasmine vine (verandah pillar right of the steps, then along the beam) ----------------
+  // Built in detail so it holds up close: a twining main stem, side shoots, opposite pairs of pointed
+  // leaves, and clusters of five-petalled flowers (or buds) at the shoot tips. Everything is instanced or
+  // merged, and ordered by how far along the vine it is, so growing it is just a draw count.
   const jas = group("jasmine");
   const PX = 1.15,
     PZ = 5.95;
   const helix: THREE.Vector3[] = [];
-  const TURNS = 3.2,
-    Y0 = P + 0.05,
+  const TURNS = 3.4,
+    Y0 = P + 0.04,
     Y1 = 2.72;
-  for (let i = 0; i <= 64; i++) {
-    const k = i / 64;
+  for (let i = 0; i <= 90; i++) {
+    const k = i / 90;
     const a = k * TURNS * Math.PI * 2 + 1.2;
-    helix.push(new THREE.Vector3(PX + Math.cos(a) * 0.14, Y0 + (Y1 - Y0) * k, PZ + Math.sin(a) * 0.14));
+    const r = 0.135 + 0.012 * Math.sin(k * 41);
+    helix.push(new THREE.Vector3(PX + Math.cos(a) * r, Y0 + (Y1 - Y0) * k + 0.01 * Math.sin(k * 57), PZ + Math.sin(a) * r));
   }
   const last = helix[helix.length - 1];
   const beam: THREE.Vector3[] = [];
-  for (let i = 1; i <= 40; i++) {
-    const k = i / 40;
+  for (let i = 1; i <= 60; i++) {
+    const k = i / 60;
     const x = last.x + (6.8 - last.x) * k;
-    beam.push(new THREE.Vector3(x, 2.84 + 0.05 * Math.sin(k * 23), 6.1 + 0.03 * Math.cos(k * 31)));
+    beam.push(new THREE.Vector3(x, 2.84 + 0.05 * Math.sin(k * 23) + 0.015 * Math.sin(k * 71), 6.1 + 0.03 * Math.cos(k * 31)));
   }
-  const vinePts = [...helix, ...beam];
-  const vineCurve = new THREE.CatmullRomCurve3(vinePts);
-  const TUBE_SEG = 420,
+  const vineCurve = new THREE.CatmullRomCurve3([...helix, ...beam]);
+  const TUBE_SEG = 520,
     TUBE_RAD = 5;
-  const vineGeo = new THREE.TubeGeometry(vineCurve, TUBE_SEG, 0.014, TUBE_RAD, false);
-  const vine = b.mesh(vineGeo, std({ color: 0x33461c, roughness: 0.8 }), jas);
-  vine.castShadow = false;
+  const vineGeo = new THREE.TubeGeometry(vineCurve, TUBE_SEG, 0.011, TUBE_RAD, false);
+  const stemMat = std({ color: 0x2c3f17, roughness: 0.8 });
+  b.mesh(vineGeo, stemMat, jas);
+
+  // side shoots: short, drooping, ordered along the vine
+  interface Shoot {
+    t: number;
+    curve: THREE.CatmullRomCurve3;
+  }
+  const shoots: Shoot[] = [];
+  for (let i = 0; i < 34; i++) {
+    const t = 0.06 + (i / 34) * 0.92 + rnd() * 0.02;
+    const p0 = vineCurve.getPointAt(Math.min(1, t));
+    const onPillar = p0.y < 2.6 && Math.hypot(p0.x - PX, p0.z - PZ) < 0.3;
+    // out from the pillar (or forward and down from the beam), then drooping
+    const out = onPillar ? new THREE.Vector3(p0.x - PX, 0, p0.z - PZ).normalize() : new THREE.Vector3(rnd() - 0.5, 0, 0.6 + rnd() * 0.4).normalize();
+    const len = 0.14 + rnd() * 0.22;
+    const p1 = p0.clone().addScaledVector(out, len * 0.5).add(new THREE.Vector3(0, 0.03, 0));
+    const p2 = p0.clone().addScaledVector(out, len).add(new THREE.Vector3((rnd() - 0.5) * 0.08, -len * (0.3 + rnd() * 0.5), (rnd() - 0.5) * 0.08));
+    shoots.push({ t, curve: new THREE.CatmullRomCurve3([p0, p1, p2]) });
+  }
+  shoots.sort((x, y) => x.t - y.t);
+  const shootGeos = shoots.map((sh) => new THREE.TubeGeometry(sh.curve, 10, 0.0055, 4, false).toNonIndexed());
+  const shootStarts: number[] = [];
+  let acc = 0;
+  for (const g of shootGeos) {
+    shootStarts.push(acc);
+    acc += g.attributes.position.count;
+  }
+  shootStarts.push(acc);
+  const shootGeo = mergeGeometries(shootGeos);
+  b.mesh(shootGeo, stemMat, jas);
+
+  // leaves: a pointed oval, folded a little along the midrib
   const leafGeo = (() => {
-    const g = new THREE.SphereGeometry(0.045, 6, 4);
-    g.scale(1, 0.25, 0.55);
-    g.translate(0.04, 0, 0);
+    const sh = new THREE.Shape();
+    sh.moveTo(0, 0);
+    sh.bezierCurveTo(0.012, 0.012, 0.022, 0.04, 0, 0.068);
+    sh.bezierCurveTo(-0.022, 0.04, -0.012, 0.012, 0, 0);
+    const g = new THREE.ShapeGeometry(sh, 6);
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.abs(pos.getX(i)) * 0.35 - pos.getY(i) * pos.getY(i) * 1.2);
+    g.computeVertexNormals();
     return g;
   })();
-  const leafSpots = along(vineCurve, 260, rnd);
-  const leaves = new THREE.InstancedMesh(leafGeo, std({ color: 0x24461a, roughness: 0.75 }), leafSpots.length);
-  leafSpots.forEach((sp, i) => {
-    e.set(rnd() * 6.28, rnd() * 6.28, rnd() * 6.28);
-    q.setFromEuler(e);
-    s.setScalar(0.7 + rnd() * 0.6);
-    m4.compose(sp.p, q, s);
-    leaves.setMatrixAt(i, m4);
-  });
-  leaves.castShadow = false;
-  jas.add(leaves);
-  const flowerGeo = (() => {
-    const shape = new THREE.Shape();
-    for (let i = 0; i <= 10; i++) {
-      const a = (i / 10) * Math.PI * 2;
-      const r = i % 2 ? 0.012 : 0.03;
-      if (i === 0) shape.moveTo(Math.cos(a) * r, Math.sin(a) * r);
-      else shape.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+  interface Spot {
+    t: number;
+    m: THREE.Matrix4;
+    c: THREE.Color;
+  }
+  const leafSpots: Spot[] = [];
+  const up = new THREE.Vector3(0, 1, 0);
+  const leafAt = (t: number, p: THREE.Vector3, tan: THREE.Vector3, young: number) => {
+    for (const side of [-1, 1]) {
+      // opposite pairs: out to each side of the stem, tipped forward and drooping
+      const sideDir = new THREE.Vector3().crossVectors(tan, up).normalize().multiplyScalar(side);
+      if (sideDir.lengthSq() < 0.01) sideDir.set(side, 0, 0);
+      const dir = sideDir.clone().addScaledVector(tan, 0.4).add(new THREE.Vector3(0, -0.25 - rnd() * 0.3, 0)).normalize();
+      const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+      quat.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), (rnd() - 0.5) * 1.2));
+      const sc = (0.75 + rnd() * 0.45) * (1 - young * 0.45);
+      const col = new THREE.Color().setHSL(0.27 + rnd() * 0.03, 0.55, 0.16 + young * 0.1 + rnd() * 0.04);
+      leafSpots.push({ t, m: new THREE.Matrix4().compose(p.clone().addScaledVector(dir, 0.004), quat, new THREE.Vector3(sc, sc, sc)), c: col });
     }
-    return new THREE.ShapeGeometry(shape);
+  };
+  for (let k = 0.01; k < 1; k += 0.0085) leafAt(k, vineCurve.getPointAt(k), vineCurve.getTangentAt(k), 0);
+  for (const sh of shoots)
+    for (let k = 0.15; k <= 1; k += 0.22) leafAt(sh.t, sh.curve.getPointAt(k), sh.curve.getTangentAt(k), k);
+  leafSpots.sort((x, y) => x.t - y.t);
+  const leaves = new THREE.InstancedMesh(leafGeo, std({ color: 0xffffff, roughness: 0.7, side: THREE.DoubleSide }), leafSpots.length);
+  leafSpots.forEach((l, i) => {
+    leaves.setMatrixAt(i, l.m);
+    leaves.setColorAt(i, l.c);
+  });
+  jas.add(leaves);
+
+  // flowers: five rounded petals and a pale yellow eye; buds are slim and pink-tipped
+  const flowerGeo = (() => {
+    const sh = new THREE.Shape();
+    const N = 5;
+    for (let i = 0; i <= N * 8; i++) {
+      const a = (i / (N * 8)) * Math.PI * 2;
+      const r = 0.009 + 0.017 * Math.pow(Math.abs(Math.cos((a * N) / 2)), 0.7);
+      if (i === 0) sh.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+      else sh.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    const g = new THREE.ShapeGeometry(sh);
+    const pos = g.attributes.position as THREE.BufferAttribute;
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, -Math.hypot(pos.getX(i), pos.getY(i)) * 0.25); // a shallow cup
+    g.computeVertexNormals();
+    return g;
   })();
-  const flowerSpots = along(vineCurve, 150, rnd).map((sp) => ({ ...sp, r: rnd(), out: new THREE.Vector3(rnd() - 0.5, rnd() - 0.2, rnd() - 0.5).normalize() }));
-  const flowers = new THREE.InstancedMesh(flowerGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.6, side: THREE.DoubleSide, emissive: 0x222018 }), flowerSpots.length);
-  flowers.castShadow = false;
-  jas.add(flowers);
-  const WHITE = new THREE.Color(0xfffdf4),
-    BUD = new THREE.Color(0x9cb86a);
+  const budGeo = (() => {
+    const g = new THREE.SphereGeometry(0.007, 7, 5);
+    g.scale(1, 1, 2.6);
+    g.translate(0, 0, 0.014);
+    return g;
+  })();
+  const eyeGeo = new THREE.IcosahedronGeometry(0.0035, 0);
+  interface Bloom {
+    t: number;
+    r: number;
+    p: THREE.Vector3;
+    out: THREE.Vector3;
+  }
+  const blooms: Bloom[] = [];
+  const cluster = (t: number, at: THREE.Vector3, n: number) => {
+    for (let i = 0; i < n; i++) {
+      const out = new THREE.Vector3(rnd() - 0.5, 0.2 + rnd() * 0.6, rnd() - 0.2).normalize();
+      blooms.push({ t, r: rnd(), p: at.clone().add(new THREE.Vector3((rnd() - 0.5) * 0.05, (rnd() - 0.5) * 0.04, (rnd() - 0.5) * 0.05)), out });
+    }
+  };
+  for (const sh of shoots) cluster(sh.t, sh.curve.getPointAt(1), 3 + Math.floor(rnd() * 5));
+  for (let k = 0.08; k < 1; k += 0.035) {
+    const p0 = vineCurve.getPointAt(k);
+    cluster(k, p0.clone().add(new THREE.Vector3(0, 0, 0.03)), 1 + Math.floor(rnd() * 3));
+  }
+  blooms.sort((x, y) => x.t - y.t);
+  const flowerMat = new THREE.MeshStandardMaterial({ color: 0xfffdf6, roughness: 0.55, side: THREE.DoubleSide, emissive: 0x2a2822 });
+  const flowers = new THREE.InstancedMesh(flowerGeo, flowerMat, blooms.length);
+  const eyes = new THREE.InstancedMesh(eyeGeo, std({ color: 0xe8c64a, roughness: 0.6 }), blooms.length);
+  const buds = new THREE.InstancedMesh(budGeo, std({ color: 0xffffff, roughness: 0.6 }), blooms.length);
+  jas.add(flowers, eyes, buds);
+  const BUD_PINK = new THREE.Color(0xf3dde4),
+    BUD_GREEN = new THREE.Color(0xc9d9a8);
+  const zAxis = new THREE.Vector3(0, 0, 1);
   let jasShown = -1,
     jasBloom = -1;
   function setJasmine(growth: number, bloom: number) {
-    const frac = growth <= 0 ? 0.02 : Math.min(1, 0.06 + (growth / 8) * 0.94);
+    const frac = growth <= 0 ? 0.03 : Math.min(1, 0.06 + (growth / 8) * 0.94);
     if (Math.abs(frac - jasShown) < 1e-4 && Math.abs(bloom - jasBloom) < 1e-4) return;
     jasShown = frac;
     jasBloom = bloom;
     vineGeo.setDrawRange(0, Math.ceil(TUBE_SEG * frac) * TUBE_RAD * 6);
+    const shootsShown = shoots.filter((sh) => sh.t <= frac).length;
+    shootGeo.setDrawRange(0, shootStarts[shootsShown]);
     leaves.count = leafSpots.filter((l) => l.t <= frac).length;
-    let n = 0;
-    for (const f of flowerSpots) {
+    let nf = 0,
+      nb = 0;
+    for (const f of blooms) {
       if (f.t > frac) continue;
-      const open = f.r < bloom;
-      q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), f.out);
-      s.setScalar(open ? 1 : 0.45);
-      v.copy(f.p).addScaledVector(f.out, 0.03);
-      m4.compose(v, q, s);
-      flowers.setMatrixAt(n, m4);
-      flowers.setColorAt(n, open ? WHITE : BUD);
-      n++;
+      q.setFromUnitVectors(zAxis, f.out);
+      if (f.r < bloom) {
+        m4.compose(v.copy(f.p), q, s.setScalar(0.85 + f.r * 0.4));
+        flowers.setMatrixAt(nf, m4);
+        m4.compose(v.copy(f.p).addScaledVector(f.out, 0.002), q, s.setScalar(1));
+        eyes.setMatrixAt(nf, m4);
+        nf++;
+      } else {
+        m4.compose(v.copy(f.p), q, s.setScalar(0.8 + f.r * 0.3));
+        buds.setMatrixAt(nb, m4);
+        // in a quiet week the buds stay green; otherwise they're pink-tipped, nearly ready
+        buds.setColorAt(nb, bloom > 0.15 ? BUD_PINK : BUD_GREEN);
+        nb++;
+      }
     }
-    flowers.count = n;
-    flowers.instanceMatrix.needsUpdate = true;
-    if (flowers.instanceColor) flowers.instanceColor.needsUpdate = true;
+    flowers.count = eyes.count = nf;
+    buds.count = nb;
+    flowers.instanceMatrix.needsUpdate = eyes.instanceMatrix.needsUpdate = buds.instanceMatrix.needsUpdate = true;
+    if (buds.instanceColor) buds.instanceColor.needsUpdate = true;
   }
   setJasmine(0, 0);
 
@@ -774,7 +867,6 @@ export function buildHomey(ctx: BuildCtx, roofMats: THREE.Material[]): Homey {
 
   let shimmerAt = -1,
     shimmerPending = false;
-  const flowerMat = flowers.material as THREE.MeshStandardMaterial;
   function shimmer() {
     shimmerPending = true;
   }
@@ -787,12 +879,10 @@ export function buildHomey(ctx: BuildCtx, roofMats: THREE.Material[]): Homey {
     const sk = shimmerAt >= 0 ? (t - shimmerAt) / 1.6 : 1;
     if (sk < 1) {
       const pulse = Math.sin(sk * Math.PI);
-      flowerMat.emissive.setRGB(0.13 + 0.7 * pulse, 0.12 + 0.62 * pulse, 0.09 + 0.35 * pulse);
-      jas.scale.setScalar(anim ? 1 + 0.015 * Math.sin(sk * Math.PI * 6) * (1 - sk) : 1);
+      flowerMat.emissive.setRGB(0.16 + 0.7 * pulse, 0.15 + 0.62 * pulse, 0.13 + 0.35 * pulse);
     } else if (shimmerAt >= 0) {
       shimmerAt = -1;
-      flowerMat.emissive.setHex(0x222018);
-      jas.scale.setScalar(1);
+      flowerMat.emissive.setHex(0x2a2822);
     }
     // frames ride down with the cut-away walls but keep their shape
     const y = P + 1.6 * wallScaleY;
