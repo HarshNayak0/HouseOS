@@ -264,10 +264,12 @@ export function HouseApp() {
             onClick={() => ctrl.viewJasmine()}
             style={{ opacity: 0 }}
             aria-label="Look at the jasmine up close"
-            className="absolute top-0 left-0 flex h-9 items-center gap-1 rounded-full border border-brass bg-paper/90 px-2.5 text-[12px] font-bold text-ink shadow-[0_2px_8px_rgba(59,36,24,0.18)] transition-opacity duration-300"
+            title="The jasmine"
+            className="absolute top-0 left-0 flex h-11 w-11 items-center justify-center transition-opacity duration-300"
           >
-            <span aria-hidden="true">🌼</span>
-            <span aria-hidden="true">Jasmine</span>
+            <span aria-hidden="true" className="flex h-6 w-6 items-center justify-center rounded-full border border-brass bg-paper/85 text-[13px] leading-none shadow-[0_1px_5px_rgba(59,36,24,0.2)]">
+              🌼
+            </span>
           </button>
         </div>
       )}
